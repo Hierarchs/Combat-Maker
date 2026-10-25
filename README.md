@@ -4,10 +4,12 @@ A Foundry Virtual Tabletop **V14** encounter builder for the **D&D5e** game syst
 
 ![The Forge, shown with mock-world development data](docs/screenshots/forge.png)
 
-<details><summary>Generator, Vault, and Ledger previews</summary>
+<details><summary>Generator, Vault, waves, recommendations, and Ledger previews</summary>
 
 ![Encounter generator](docs/screenshots/generator.png)
 ![Saved encounters in the Vault](docs/screenshots/vault.png)
+![Independent waves and reinforcement controls](docs/screenshots/waves.png)
+![Party-based encounter recommendations](docs/screenshots/recommendations.png)
 ![Compendium diagnostics in the Bestiary Ledger](docs/screenshots/ledger.png)
 ![Correcting metadata without editing the source pack](docs/screenshots/metadata-repair.png)
 
@@ -34,7 +36,7 @@ The workspace uses an original parchment-and-ink theme inspired by the classic O
 1. **Choose a party.** Use the person button or drag character Actors or character tokens into the window. Assigned player characters populate the initial party automatically. Health and resource estimates update when actors, items, effects, or tokens change.
 2. **Choose sources.** The books button discovers installed Actor compendiums automatically, or lets you check individual packs, including world and homebrew compendiums. World NPCs are included by default. Indexes load two packs at a time. Full actors are fetched for sheets, uncatalogued encounter sources, drops, deployment, and the Ledger's reference scan; scanning references loads only the actors used by encounters or extra dropped references.
 3. **Find monsters.** Search names and books; filter by type, size, book, edition, alignment, environment, legendary status, and fractional CR. Sort columns and page through large catalogues. The eye opens a creature's sheet. Click a row, or focus it and press Enter/Space, to add it. Press `/` inside the window to search.
-4. **Build or generate.** Adjust quantities directly or with +/−. The generator targets either party difficulty or **combined CR**, respects bestiary filters, and caps both total monsters and distinct stat blocks. It reports when only a closest match is available. Generation replaces the current draft's monster list.
+4. **Build or generate.** Adjust quantities directly or with +/−. The generator targets either party difficulty or **combined CR**, respects bestiary filters, and caps both total monsters and distinct stat blocks. It reports when only a closest match is available. Generation replaces only the active wave's monster list, keeping other waves and encounter notes.
 5. **Read the rating.** Compare the rested party's **Full** rating with the live **Now** estimate. Click the difficulty panel to see all budgets and the calculation.
 6. **Save or deploy.** Save a named encounter to the Vault, or place it in the current scene.
 
@@ -95,20 +97,49 @@ This model is advisory and cannot know tactics, custom automation, magic-item po
 
 ## The Vault
 
-Saved encounters are individual **JournalEntry documents** in **Combat Forge — The Vault**, with GM-only default ownership. They include monster references and metadata, quantities, party snapshots and references, rule choices, save date, and the difficulty at save. No commercial stat blocks are copied into the Vault.
+Saved encounters are individual **JournalEntry documents** in **Combat Forge — The Vault**, with GM-only default ownership. They include all waves, monster references and metadata, quantities, party snapshots and references, rule choices, tags, folder, encounter notes, save date, and per-wave difficulty at save. No commercial stat blocks are copied into the Vault.
 
-- Click a card's name to inspect monsters and the saved party.
+- Search names, creature names, tags, encounter notes, wave names, wave notes, and arrival triggers. Folder and tag filters combine with search. Sort by recency, name, or total XP; larger libraries are paged.
+- Enter comma-separated tags, a folder, and notes in the Save dialog. The book button beside the active wave also edits encounter notes while building.
+- Create folders with the + beside Folders. The quill beside a folder renames it or offers deletion. These are real JournalEntry folders under the Vault root. Removing a folder moves its encounters to Unfiled and keeps them. Folders containing unrelated journals or manually added subfolders must be cleared first.
+- Click a card's name to inspect encounter notes, every wave, its saved rating, and the saved party.
 - **Load into Forge** refreshes actor data and party resources so you can edit a previous fight. **Save** updates that encounter; **Save as a new encounter** creates a copy.
-- **Deploy** works directly from a card or its detail view.
+- **Deploy** works directly from a card or its detail view. Multi-wave cards ask which group to deploy; each group also has its own deployment button in the detail view.
+- Cards show total monsters and XP across all waves, plus the **peak wave** rating. This rating is not a claim that the entire sequence has that difficulty.
+- **Export matches** downloads the encounters matching the current search/folder/tag filters. Each card and detail view can export one encounter. Exports include wave plans, notes, tags, folder names, party snapshots, and actor UUIDs; they do not include source Actor documents or stat blocks.
+- **Import JSON** accepts a file or pasted export and previews names, waves, monster totals, and folders before importing. Imports create new copies, never overwrite existing encounters, and reuse matching folder names. The format is versioned and validated; limits are 5 MB and 100 encounters per import. If a write fails, newly imported encounter journals are rolled back where possible; empty folders may remain.
+- When a saved source is missing or has an invalid CR, loading or deployment opens a **Repair encounter sources** dialog. Choose replacements or repair CR through the Ledger. No partial deployment occurs while a source is unresolved. Replacement mappings also work for imported UUIDs from another world; matching actors are never guessed automatically.
 - Deleting a Vault entry deletes that encounter's journal, leaving its actors and scene tokens in place.
 
 The current draft is saved per client in Foundry settings. World sources, dropped homebrew references, and default rules are world settings. Normal Foundry world backups include the Vault journals and world settings. Each encounter has its own document, so two GMs saving different encounters do not overwrite a shared list. Concurrent edits to the same encounter follow Foundry's normal document update behavior.
 
+## Waves and reinforcements
+
+Use the wave selector above the encounter's monster list to switch groups. The + creates a wave; the quill edits its name, arrival trigger, notes, and order, or deletes it. Add creatures and use the generator with the intended wave selected. Switching waves preserves every group's list. Save stores the entire encounter, including empty planning waves.
+
+Each wave has its own XP/difficulty calculation against the party's current state. The Forge summary rates the **active wave**. The Vault records each wave's rating and the peak rating at save. Parties can lose resources between waves, and overlapping groups can be more dangerous than separate ratings suggest. Written arrival triggers are GM notes: they do not automatically spawn tokens or advance combat.
+
+Deploy each group from the Forge, a Vault card, or the saved detail view. Optionally check **Roll initiative for this group**; this also adds it to the current scene's combat, creating one if needed. Only the new group's combatants are rolled. Existing initiatives stay intact, and Foundry keeps the current combatant on their turn. Hidden groups use V14's private GM message mode. Visible groups use the normal message visibility setting.
+
+Tokens carry encounter/wave flags so the saved detail view can show how many tokens from that wave remain on the viewed scene. Deploying a group again explicitly adds another copy; the dialog shows the existing count. Token flags track presence, not a permanent combat history.
+
+Limits are **10 waves**, **100 monsters per wave/deployment**, and **500 monsters across an encounter**. Schema-1 encounters from v1.0/v1.1 are upgraded to one opening wave in memory; their journals are only rewritten when you save. v1.2 exports use schema 2 and require a module version that understands waves.
+
+## Recommended encounters
+
+Open **Recommended** after choosing a party. The module generates four encounter plans from enabled catalogue sources and the bestiary's current search/filter choices: a patrol, a skirmish, a solitary elite foe, and a two-wave reinforcement encounter. Choose varied difficulties or one desired difficulty, cap the number of monsters per wave, and refresh for new options.
+
+Every plan shows its actual rating, creatures, XP, story hook, target-fit explanation, and relevant cautions. Only real indexed monster references are used. If restrictions prevent the requested budget from being reached, the card says it is the closest available match. Recommendations account for your selected rules and optional current-resource estimate; they do not simulate tactics, ability synergies, or future resource expenditure. Aquatic metadata and high-CR threats receive cautions where detected.
+
+**Load into Forge** opens a plan for customization, replacing the current draft's groups. **Save to Vault** saves it as a new encounter without changing the draft. Reinforcement plans retain separate arrival notes and waves. A **From your Vault** section ranks saved encounters by how close their peak wave is to the requested party budget, using current party state and bestiary filters. Loading a saved encounter restores its own rule selection and refreshes its actor data.
+
+If the party, rules, source count, or bestiary filters change, a message asks you to refresh the displayed plans. The suggestions are a preparation aid; review special abilities, terrain, source availability, and wave timing before using them.
+
 ## Deployment
 
-Open a scene and choose a point or the center of the current view. Hidden tokens are the default; optionally add them to the scene's active combat, creating one if necessary.
+Open a scene and choose a point or the center of the current view for one wave. Hidden tokens are the default; optionally add the group to the scene's active combat and roll its initiative.
 
-Compendium Actors are imported once, tagged by source UUID, and reused on subsequent deployments. Imported world Actors can be edited normally; later deployments use those edited copies. Tokens are unlinked, hostile, and preserve prototype artwork, wildcard selection, and size. Placement snaps with Foundry's token API and avoids token footprint overlaps within scene bounds, including larger tokens. Wall, region, terrain, and elevation suitability still need GM review. At most 100 monsters can be in one encounter.
+Compendium Actors are imported once, tagged by source UUID, and reused on subsequent deployments. Imported world Actors can be edited normally; later deployments use those edited copies. Tokens are unlinked, hostile, and preserve prototype artwork, wildcard selection, and size. Placement snaps with Foundry's token API and avoids token footprint overlaps within scene bounds, including larger tokens. Wall, region, terrain, and elevation suitability still need GM review. At most 100 monsters are deployed in one group.
 
 Every source is resolved before deployment starts. Missing sources stop the operation with an actionable error. Failed deployment attempts roll back created tokens, newly created combats, and unused imports where possible. If a cleanup operation itself fails, the module reports it so the scene can be checked.
 
@@ -131,7 +162,7 @@ npm run preview
 # Open http://127.0.0.1:4314
 ```
 
-Automated coverage includes official rules examples and boundaries, dynamic readiness, legacy/current metadata, filtering, constrained generation, source failures, homebrew, independent Vault saves, deployment and rollback, metadata repair/reset and source immutability, duplicate preference/restore, missing-reference resolution and cycle rejection, large duplicate scans, browser interactions, and compact Forge/Ledger layouts. Browser fixtures exercise the actual controller and views using a mock adapter. **A live Foundry V14/D&D5e world smoke test is still required for runtime certification.** See [docs/TESTING.md](docs/TESTING.md).
+Automated coverage includes official rules examples and boundaries, dynamic readiness, legacy/current metadata, constrained generation, source diagnostics/repair and immutability, duplicate preferences, independent Vault saves, wave-schema migration and limits, search/filter intersections, native folders, JSON round trips and import rollback, separate wave deployment, per-group initiative and failure cleanup, recommendations, browser workflows, and compact layouts. Browser fixtures exercise the actual controller and views using a mock adapter. **A live Foundry V14/D&D5e world smoke test is still required for runtime certification.** See [docs/TESTING.md](docs/TESTING.md).
 
 The package uses V14 `ApplicationV2`, the current scene-control record format, namespaced document APIs, UUIDs, compendium indexes, and token snapping. It does not embed the VTT or system runtime. The production ZIP excludes tests, development fixtures, dependencies, and development servers.
 

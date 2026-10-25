@@ -1,13 +1,13 @@
 import { ID, DEFAULT_RULES, MAX_MONSTERS, formatNumber as num, formatCR } from "./constants.mjs";
-import { normalizeCharacter, normalizeMonster, filterMonsters, facets } from "./normalize.mjs";
+import { normalizeCharacter, filterMonsters, facets } from "./normalize.mjs";
 import { assessEncounter, rulesConfig } from "./difficulty.mjs";
 import { generateEncounter } from "./generator.mjs";
 import { actorPacks, actorPack, MonsterCatalog } from "./catalog.mjs";
-import { vaultEntries, saveEncounter, validateEncounter } from "./vault.mjs";
-import { deployEncounter, pickCanvasPoint } from "./deploy.mjs";
+import { vaultEntries, validateEncounter } from "./vault.mjs";
 import { shellHTML, escapeHTML as e, icon, button, select, portrait } from "./view.mjs";
 import { healthHTML } from "./health-view.mjs";
-import { saveCorrection, resetCorrection, setHidden, preferDuplicate, saveReplacement, removeReplacement, resolveReplacement, repairState } from "./repairs.mjs";
+import { saveCorrection, resetCorrection, setHidden, preferDuplicate, saveReplacement, removeReplacement, resolveReplacement } from "./repairs.mjs";
+import { installCampaignFeatures } from "./campaign.mjs";
 
 export class ForgeController {
   constructor(root) {
@@ -17,6 +17,7 @@ export class ForgeController {
     this.loadedId=null;this.loadedName="";this.dirty=false;this.progress=null;this.toast="";this.busy=false;
     this.abort=new AbortController();this.writeQueue=Promise.resolve();
     this.health={section:"metadata",filter:"issues",search:"",pack:"",page:0,scanning:false};
+    this.initCampaign();
   }
 
   async mount() {
@@ -38,11 +39,11 @@ export class ForgeController {
     this.root.addEventListener("drop",event=>this.onDrop(event),{signal});
     const draft=game.settings.get(ID,"draft");
     this.rules=rulesConfig(draft?.rules ?? game.settings.get(ID,"defaultRules"));
-    if(draft?.schema===1) {
+    if([1,2].includes(draft?.schema)) {
       try {
         const valid=validateEncounter(draft);
-        this.lines=valid.lines;this.partyUuids=valid.party.map(p=>p.uuid);this.loadedId=valid.loadedId||null;
-        this.loadedName=valid.name||"";this.dirty=Boolean(valid.dirty);
+        this.adoptEncounter(valid);this.loadedId=draft.loadedId||null;
+        this.loadedName=draft.name||"";this.dirty=Boolean(draft.dirty);this.draftKey=draft.draftKey||this.draftKey;
       } catch(error) {ui.notifications.warn(`Combat Forge could not restore the draft: ${error.message}`);}
     } else {
       this.partyUuids=[...new Set([...game.users].filter(u=>!u.isGM).map(u=>u.character?.uuid).filter(Boolean))];
@@ -73,14 +74,14 @@ export class ForgeController {
       if(!this.lastProgressPaint || Date.now()-this.lastProgressPaint>180){this.lastProgressPaint=Date.now();this.paint();}
     });
     this.progress=null;
-    for(const line of this.lines){const m=this.catalog.get(line.monster.uuid);if(m){line.monster=m;line.missing=false;}}
+    for(const wave of this.waves)for(const line of wave.lines){const m=this.catalog.get(line.monster.uuid);if(m){line.monster=m;line.missing=false;}}
     this.paint();
   }
 
-  snapshot() {return {schema:1,lines:structuredClone(this.lines),party:structuredClone(this.party),rules:{...this.rules},report:this.report};}
+  snapshot() {return this.encounterSnapshot();}
   changed(markDirty=true) {
     this.dirty=markDirty;this.paint();
-    const data={...this.snapshot(),party:this.partyUuids.map(uuid=>this.party.find(p=>p.uuid===uuid)??{uuid}),loadedId:this.loadedId,name:this.loadedName,dirty:this.dirty};
+    const data={...this.snapshot(),party:this.partyUuids.map(uuid=>this.party.find(p=>p.uuid===uuid)??{uuid}),loadedId:this.loadedId,name:this.loadedName,dirty:this.dirty,draftKey:this.draftKey};
     this.writeQueue=this.writeQueue.catch(()=>{}).then(()=>game.settings.set(ID,"draft",data)).catch(error=>this.error(error));
   }
 
@@ -100,9 +101,9 @@ export class ForgeController {
       return (cmp||a.name.localeCompare(b.name))*(this.desc?-1:1);
     });
     this.page=Math.max(0,Math.min(this.page,Math.ceil(matches.length/this.pageSize)-1));
-    this.root.innerHTML=shellHTML({...this,report:this.report,facets:facets(this.catalog.monsters),
+    this.root.innerHTML=shellHTML({...this,lines:this.lines,report:this.report,facets:facets(this.catalog.monsters),
       monsters:matches.slice(this.page*this.pageSize,(this.page+1)*this.pageSize),totalMatches:matches.length,entries:this.entries,
-      ledgerHTML:this.tab==="health"?healthHTML(this.catalog,this.health):""});
+      ledgerHTML:this.tab==="health"?healthHTML(this.catalog,this.health):"",...this.campaignView()});
     for(const [key,top] of scrolls) this.root.querySelector(`[data-scroll="${key}"]`)?.scrollTo(0,top);
     if(focusName) {
       const input=[...this.root.querySelectorAll("[name]")].find(el=>el.name===focusName);
@@ -120,6 +121,7 @@ export class ForgeController {
     event.preventDefault();event.stopPropagation();
     const action=target.dataset.cfAction,uuid=target.dataset.uuid,id=target.dataset.id;
     try {
+      if(await this.handleCampaignAction(action,target))return;
       if(action==="tab-forge" || action==="tab-vault"){this.tab=action==="tab-forge"?"forge":"vault";this.paint();}
       else if(action==="tab-health"){this.tab="health";this.paint();await this.scanHealth(false);}
       else if(action==="audit-health")await this.scanHealth();
@@ -138,7 +140,7 @@ export class ForgeController {
       else if(action==="add-monster" || action==="increment")this.addMonster(this.findMonster(uuid));
       else if(action==="decrement"){const line=this.lines.find(l=>l.monster.uuid===uuid);if(line?.quantity>1)line.quantity--;else this.lines=this.lines.filter(l=>l.monster.uuid!==uuid);this.changed();}
       else if(action==="remove-monster"){this.lines=this.lines.filter(l=>l.monster.uuid!==uuid);this.changed();}
-      else if(action==="clear-encounter"){this.lines=[];this.loadedId=null;this.loadedName="";this.changed();}
+      else if(action==="clear-encounter"){this.resetEncounter();this.changed();}
       else if(action==="remove-party"){this.partyUuids=this.partyUuids.filter(v=>v!==uuid);await this.syncParty();this.changed();}
       else if(action==="clear-party"){this.partyUuids=[];await this.syncParty();this.changed();}
       else if(action==="clear-filters"){this.filters={};this.page=0;this.paint();}
@@ -157,13 +159,14 @@ export class ForgeController {
       else if(action==="deploy")this.deployDialog(this.lines);
       else if(action==="explain")this.explainDialog();
       else if(action==="help")this.helpDialog();
-      else if(action==="close-dialog")this.closeDialog();
+      else if(action==="close-dialog"){this.repairContext=null;this.closeDialog();}
     } catch(error) {this.error(error);}
   }
 
   onInput(event) {
     const input=event.target;
     if(this.dialog?.contains(input))return;
+    if(this.handleCampaignInput(input))return;
     if(input.name==="healthSearch") {
       this.health.search=input.value;this.health.page=0;
       clearTimeout(this.searchTimer);this.searchTimer=setTimeout(()=>this.paint(),140);return;
@@ -176,6 +179,7 @@ export class ForgeController {
   onChange(event) {
     const input=event.target;
     if(this.dialog?.contains(input))return;
+    if(this.handleCampaignChange(input))return;
     if(input.name==="healthFilter"||input.name==="healthPack"){
       this.health[input.name==="healthFilter"?"filter":"pack"]=input.value;this.health.page=0;this.paint();return;
     }
@@ -183,14 +187,14 @@ export class ForgeController {
     if(input.dataset.quantity) {
       const line=this.lines.find(l=>l.monster.uuid===input.dataset.quantity);
       const q=Number(input.value);
-      if(!Number.isInteger(q) || q<1 || this.report.count-(line?.quantity||0)+q>MAX_MONSTERS) {this.notify(`Use a whole quantity from 1 to ${MAX_MONSTERS}; the whole encounter is capped at ${MAX_MONSTERS}.`);return;}
+      if(!Number.isInteger(q) || q<1 || this.report.count-(line?.quantity||0)+q>MAX_MONSTERS || this.totalMonsterCount-(line?.quantity||0)+q>500) {this.notify(`Use a whole quantity from 1 to ${MAX_MONSTERS}; each wave is capped at 100 and an encounter at 500.`);return;}
       if(line){line.quantity=q;this.changed();}
     }
   }
 
   addMonster(monster) {
     if(!monster)throw new Error("That creature is no longer in the catalogue. Re-index your sources.");
-    if(this.report.count>=MAX_MONSTERS)throw new Error(`An encounter supports at most ${MAX_MONSTERS} monsters.`);
+    if(this.report.count>=MAX_MONSTERS||this.totalMonsterCount>=500)throw new Error("Each wave supports at most 100 monsters; the whole encounter supports 500.");
     const line=this.lines.find(l=>l.monster.uuid===monster.uuid);
     if(line)line.quantity++;else this.lines.push({monster,quantity:1});
     this.changed();
@@ -223,7 +227,7 @@ export class ForgeController {
     dialog.classList.toggle("cf-dialog-wide",wide);
     dialog.innerHTML=`<form class="cf-dialog-form"><header><h2>${e(title)}</h2>${button("close-dialog","Close","xmark","class=\"cf-dialog-close\" aria-label=\"Close dialog\"")}</header><div class="cf-dialog-body">${body}<p class="cf-dialog-error cf-hidden" role="alert"></p></div><footer>${onSubmit?`<button type="submit" class="cf-primary">${icon("check")} ${e(submit)}</button>`:""}${button("close-dialog",onSubmit?"Cancel":"Close",null)}</footer></form>`;
     dialog.querySelector("form").addEventListener("input",()=>dialog.querySelector(".cf-dialog-error").classList.add("cf-hidden"));
-    dialog.addEventListener("cancel",()=>queueMicrotask(()=>{if(this.paintPending)this.paint();}),{once:true});
+    dialog.addEventListener("cancel",()=>{this.repairContext=null;queueMicrotask(()=>{if(this.paintPending)this.paint();});},{once:true});
     if(onSubmit)dialog.querySelector("form").addEventListener("submit",async event=> {
       event.preventDefault();
       if(this.busy)return;
@@ -285,14 +289,15 @@ export class ForgeController {
     this.health.scanning=true;this.paint();
     try {
       if(refresh)await this.refreshCatalog();
-      await this.catalog.auditReferences(this.entries,this.lines);
+      await this.catalog.auditReferences(this.entries,this.allLines);
     }finally {this.health.scanning=false;this.paint();}
   }
 
   async refreshAfterRepair() {
     await this.refreshCatalog();
-    await this.catalog.auditReferences(this.entries,this.lines);
+    await this.catalog.auditReferences(this.entries,this.allLines);
     this.changed(this.dirty);this.notify("The Ledger has been updated. Source actors are unchanged.");
+    if(this.repairContext)await this.encounterRepairDialog(this.repairContext);
   }
 
   repairMonsterDialog(uuid) {
@@ -351,46 +356,14 @@ export class ForgeController {
       // Yield once so the pressed button has an opportunity to paint before searching.
       await new Promise(resolve=>requestAnimationFrame(()=>resolve()));
       const result=generateEncounter(this.catalog.monsters,this.party,{rules:this.rules,balance:data.get("balance"),difficulty:data.get("difficulty"),targetCR:data.get("targetCR"),maxMonsters:data.get("maxMonsters"),maxSpecies:data.get("maxSpecies"),filters});
-      this.lines=result.lines;this.loadedId=null;this.loadedName="";this.closeDialog();this.changed();this.notify(result.message);
+      this.lines=result.lines;this.closeDialog();this.changed();this.notify(result.message);
     },{submit:"Generate encounter"});
     dialog.querySelector('[name="balance"]').addEventListener("change",event=>dialog.querySelectorAll("[data-generation]").forEach(el=>el.classList.toggle("cf-hidden",el.dataset.generation!==event.target.value)));
   }
 
-  saveDialog() {
-    if(!this.lines.length)throw new Error("Add monsters before saving an encounter.");
-    this.showDialog(this.loadedId?"Save encounter":"Save to the Vault",`<label class="cf-field">Encounter name<input name="name" type="text" maxlength="120" value="${e(this.loadedName)}" placeholder="A dangerous meeting…" required autofocus></label>${this.loadedId?'<label class="cf-check"><input type="checkbox" name="copy"><span>Save as a new encounter</span></label>':""}<p>The Vault stores your monsters, quantities, party, rules, and difficulty at the time of saving.</p>`,async data=> {
-      const journal=await saveEncounter(data.get("name"),this.snapshot(),data.has("copy")?null:this.loadedId);
-      this.loadedId=journal.id;this.loadedName=journal.name;this.closeDialog();this.changed(false);
-      await this.writeQueue;
-      this.notify("Encounter saved to the Vault.");
-    },{submit:this.loadedId?"Save encounter":"Save to Vault"});
-  }
-
-  async loadEncounter(id) {
-    const entry=this.entries.find(v=>v.id===id);if(!entry)throw new Error("That encounter no longer exists.");
-    const data=validateEncounter(entry.data);
-    const lines=[];
-    for(const line of data.lines) {
-      let monster=this.catalog.get(line.monster.uuid),missing=false;
-      if(!monster) {
-        try {const resolved=resolveReplacement(line.monster.uuid);const actor=await foundry.utils.fromUuid(resolved);monster=normalizeMonster(actor,actorPack(actor),repairState().actors[resolved]);}catch{}
-        missing=!monster;
-      }
-      lines.push({...line,monster:monster||line.monster,missing});
-    }
-    this.closeDialog();this.lines=lines;this.rules=rulesConfig(data.rules);this.partyUuids=data.party.map(p=>p.uuid);
-    this.loadedId=id;this.loadedName=entry.name;this.tab="forge";
-    await this.syncParty();this.changed(false);
-    if(lines.some(l=>l.missing))this.notify("Loaded with missing sources. Re-enable those packs before deploying.");
-    else this.notify(`${entry.name} loaded into the Forge.`);
-  }
-
-  detailDialog(id) {
-    const entry=this.entries.find(v=>v.id===id);if(!entry)throw new Error("Encounter no longer exists.");
-    const {data}=entry,r=data.report;
-    const dialog=this.showDialog(entry.name,`<div class="cf-detail-stats"><div><small>MONSTERS</small><strong>${num(r?.count)}</strong></div><div><small>TOTAL XP</small><strong>${num(r?.xp)}</strong></div><div><small>AT SAVE · ${e(data.rules.edition)}</small><strong class="cf-text-${e(r?.shown?.tone||"muted")}">${e(r?.shown?.label||"Unrated")}</strong></div></div><h3>Monsters</h3><div class="cf-detail-monsters">${data.lines.map(l=>`<div>${portrait(l.monster.img,l.monster.name)}<b>${l.quantity}×</b><strong>${e(l.monster.name)}</strong><small>CR ${formatCR(l.monster.cr)} · ${num(l.monster.xp)} XP</small></div>`).join("")}</div><h3>Party at save</h3><div class="cf-detail-party">${data.party.map(p=>`<div>${portrait(p.img,p.name)}<span>${e(p.name)} <small>Level ${p.level} · ${num(p.hp)}/${num(p.maxHP)} HP</small></span></div>`).join("")||"No party saved."}</div><p>Load into the Forge to edit and recalculate using live character data.</p><div class="cf-dialog-actions">${button("load","Load into Forge","hammer",`data-id="${e(id)}" class="cf-primary"`)}${button("deploy-saved","Deploy","chess-rook",`data-id="${e(id)}"`)}</div>`,null,{wide:true});
-    return dialog;
-  }
+  saveDialog() {return this.saveCampaignDialog();}
+  async loadEncounter(id) {return this.loadCampaignEncounter(id);}
+  detailDialog(id) {return this.campaignDetailDialog(id);}
 
   deleteDialog(id) {
     const entry=this.entries.find(v=>v.id===id);if(!entry)return;
@@ -402,26 +375,7 @@ export class ForgeController {
     },{submit:"Delete encounter"});
   }
 
-  deployDialog(lines) {
-    if(!lines?.length)throw new Error("Add creatures before deploying.");
-    if(!canvas?.ready)throw new Error("Open a scene first.");
-    const copy=structuredClone(lines),count=copy.reduce((n,l)=>n+l.quantity,0);
-    this.showDialog("Deploy encounter",`<p>Place <strong>${count} monster${count===1?"":"s"}</strong> into <strong>${e(canvas.scene.name)}</strong>. Compendium creatures are imported once and reused as independent token actors.</p>${select("placement","Placement",[{value:"center",label:"Near the center of the current view"},{value:"click",label:"Choose a point on the scene"}],"center",null)}<label class="cf-check"><input type="checkbox" name="hidden" checked><span>Place tokens hidden from players</span></label><label class="cf-check"><input type="checkbox" name="combat"><span>Add monsters to the scene's active combat</span></label><div class="cf-callout">Uses open spaces within scene bounds and preserves token artwork and size. Review placement around walls and terrain before revealing the encounter.</div>`,async data=> {
-      const sceneId=canvas.scene.id;
-      const hidden=data.has("hidden"),addToCombat=data.has("combat");
-      this.closeDialog();
-      let origin=null;
-      if(data.get("placement")==="click") {
-        await this.onMinimize?.();
-        try {origin=await pickCanvasPoint({signal:this.abort.signal});}finally{if(!this.abort.signal.aborted)await this.onMaximize?.();}
-        if(!origin)return;
-      }
-      try {
-        if(canvas.scene?.id!==sceneId)throw new Error("Scene changed. Open deployment again for the intended scene.");
-        await deployEncounter(copy,{origin,hidden,addToCombat});
-      }catch(error){this.error(error);}
-    },{submit:"Deploy monsters"});
-  }
+  deployDialog(lines, options) {return this.campaignDeployDialog(lines, options);}
 
   explainDialog() {
     const r=this.report,labels=this.rules.edition==="2014"?["Easy","Medium","Hard","Deadly"]:["Low","Moderate","High"];
@@ -429,9 +383,11 @@ export class ForgeController {
   }
 
   helpDialog() {
-    this.showDialog("Welcome to Combat Forge",`<span class="cf-eyebrow">BUILD A FIGHT. TELL A STORY.</span><ol class="cf-help-steps"><li><b>Choose your party.</b> Use the person button or drop character Actors onto the party panel.</li><li><b>Connect your bestiary.</b> The books button configures sources. All Actor packs are discovered automatically by default.</li><li><b>Forge an encounter.</b> Click creatures, adjust quantities, or use Generate. Open the eye button to inspect a stat block.</li><li><b>Watch the difficulty.</b> Full shows the rested party; Now estimates their current state. Click the rating for the math.</li><li><b>Keep it in the Vault.</b> Save a named encounter, then load, edit, inspect, or deploy it any time.</li><li><b>Deploy to the scene.</b> Choose your placement and whether to hide tokens or add them to combat.</li></ol><h3>Homebrew & metadata</h3><p>Drop a world or compendium NPC onto the monster list to keep a reference. Missing CR opens the Ledger repair form. The source Actor's creature type, size, source book/rules, alignment, habitat, and legendary resources power the filters. Use The Ledger to repair missing CR, book, edition, or environments; review duplicate copies; and replace broken saved references. Corrections stay in module world settings.</p><p>Press <kbd>/</kbd> in this window to search. Focus a creature row and press Enter or Space to add it.</p><small>Combat Forge 1.1.0 · Foundry VTT 14 · D&D5e · No monster content is bundled.</small>`);
+    this.showDialog("Welcome to Combat Forge",`<span class="cf-eyebrow">BUILD A FIGHT. TELL A STORY.</span><ol class="cf-help-steps"><li><b>Choose your party.</b> Use the person button or drop character Actors onto the party panel.</li><li><b>Connect your bestiary.</b> The books button configures sources. All Actor packs are discovered automatically by default.</li><li><b>Forge an encounter.</b> Click creatures, adjust quantities, or use Generate. Open the eye button to inspect a stat block.</li><li><b>Watch the difficulty.</b> Full shows the rested party; Now estimates their current state. Click the rating for the math.</li><li><b>Keep it in the Vault.</b> Save a named encounter, then load, edit, inspect, or deploy it any time.</li><li><b>Deploy to the scene.</b> Choose your placement and whether to hide tokens or add them to combat.</li></ol><h3>Homebrew & metadata</h3><p>Drop a world or compendium NPC onto the monster list to keep a reference. Missing CR opens the Ledger repair form. The source Actor's creature type, size, source book/rules, alignment, habitat, and legendary resources power the filters. Use The Ledger to repair missing CR, book, edition, or environments; review duplicate copies; and replace broken saved references. Corrections stay in module world settings.</p><h3>Waves &amp; recommendations</h3><p>The wave selector keeps separate creature groups, arrival notes, and deployment controls. Save stores every wave. The Vault supports search, folders, tags, notes, and JSON files; missing actors open a repair dialog. Recommended builds party-based encounter plans from your enabled bestiary.</p><p>Press <kbd>/</kbd> in this window to search. Focus a creature row and press Enter or Space to add it.</p><small>Combat Forge 1.2.0 · Foundry VTT 14 · D&D5e · No monster content is bundled.</small>`);
   }
 }
+
+installCampaignFeatures(ForgeController);
 
 export class CombatForge extends foundry.applications.api.ApplicationV2 {
   static DEFAULT_OPTIONS = {

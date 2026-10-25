@@ -17,7 +17,7 @@ export async function checkHealthUI(page) {
     const original=preview.bestiary.find(m=>m.name==="Goblin"&&m.id!==duplicate.id);
     const lost={monster:{...normalizeMonster(original),uuid:"Compendium.removed.creatures.Actor.lost",name:"Lost Watchman"},quantity:1};
     const c=preview.app.controller;
-    const journal=await saveEncounter("The Lost Watch",{...c.snapshot(),lines:[lost]});
+    const journal=await saveEncounter("The Lost Watch",{...c.snapshot(),waves:[{id:"lost-wave",name:"Lost watch",lines:[lost]}]});
     await c.refreshCatalog();
     return {missing:missing.uuid,duplicate:duplicate.uuid,original:original.uuid,journalId:journal.id,old:lost.monster.uuid};
   });
@@ -97,7 +97,7 @@ export async function checkHealthUI(page) {
     for(let i=preview.bestiary.length-1;i>=0;i--)if(preview.bestiary[i].id.startsWith("ledger")){preview.ctx.docs.delete(preview.bestiary[i].uuid);preview.bestiary.splice(i,1);}
     await game.journal.get(seeded.journalId).delete();
     const testFight=game.journal.find(j=>j.name==="The Crooked Crossing");
-    const c=preview.app.controller;c.tab="forge";c.loadedId=null;c.loadedName="";c.lines=[];c.toast="";c.health={section:"metadata",filter:"issues",search:"",pack:"",page:0,scanning:false};await c.refreshCatalog();c.paint();
+    const c=preview.app.controller;c.resetEncounter();c.tab="forge";c.toast="";c.health={section:"metadata",filter:"issues",search:"",pack:"",page:0,scanning:false};await c.refreshCatalog();c.paint();
     if(testFight)c.loadedId=testFight.id;
   },seeded);
 }

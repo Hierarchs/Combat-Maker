@@ -57,7 +57,7 @@ export function pickCanvasPoint({signal}={}) {
 }
 
 let deploying=false;
-export async function deployEncounter(lines, {origin=null,hidden=true,addToCombat=false}={}) {
+export async function deployEncounter(lines, {origin=null,hidden=true,addToCombat=false,rollInitiative=false,encounterId="",waveId="",waveName=""}={}) {
   if(!game.user.isGM) throw new Error("Only a GM can deploy encounters.");
   if(deploying) throw new Error("An encounter is already being deployed.");
   if(!canvas?.ready || !canvas.scene) throw new Error("Open a scene before deploying an encounter.");
@@ -68,6 +68,7 @@ export async function deployEncounter(lines, {origin=null,hidden=true,addToComba
   const imported=[];
   let created=[];
   let newCombat=null;
+  let combat=null,combatants=[];
   try {
     // Resolve everything before creating anything. A missing source cannot partially deploy a fight.
     const sources=[];
@@ -94,6 +95,7 @@ export async function deployEncounter(lines, {origin=null,hidden=true,addToComba
       for(let i=0;i<line.quantity;i++) {
         const token=await actor.getTokenDocument({hidden,actorLink:false,disposition:CONST.TOKEN_DISPOSITIONS.HOSTILE},{parent:scene});
         const data=token.toObject();delete data._id;
+        data.flags??={};data.flags[ID]={...(data.flags[ID]||{}),encounterId,waveId,waveName};
         drafts.push({data,document:token});
       }
     }
@@ -110,19 +112,23 @@ export async function deployEncounter(lines, {origin=null,hidden=true,addToComba
     if(!canvas.ready || canvas.scene.id!==scene.id) throw new Error("The viewed scene changed. Deploy again on the intended scene.");
     created=await scene.createEmbeddedDocuments("Token",placed);
     if(created.length!==count) throw new Error("Foundry did not create every requested token.");
-    if(addToCombat) {
-      let combat=game.combats.find(c=>c.scene?.id===scene.id && c.active);
+    if(addToCombat||rollInitiative) {
+      combat=game.combats.find(c=>c.scene?.id===scene.id && (c.isActive??c.active));
       if(!combat) {combat=await foundry.documents.Combat.implementation.create({scene:scene.id,active:true});newCombat=combat;}
-      await combat.createEmbeddedDocuments("Combatant",created.map(t=>({tokenId:t.id,actorId:t.actorId,sceneId:scene.id,hidden:t.hidden})));
+      combatants=await combat.createEmbeddedDocuments("Combatant",created.map(t=>({tokenId:t.id,actorId:t.actorId,sceneId:scene.id,hidden:t.hidden})));
+      if(combatants.length!==created.length)throw new Error("Foundry did not create every requested combatant.");
+      if(rollInitiative)await combat.rollInitiative(combatants.map(c=>c.id),{updateTurn:true,...(hidden?{messageMode:"gm"}:{})});
     }
     ui.notifications.info(`Combat Forge deployed ${count} monster${count===1?"":"s"}${hidden?" (hidden)":""}.`);
     return created;
   } catch(error) {
     // Best effort rollback; preserve the original error and report cleanup failures.
     const cleanup=[];
-    if(created.length) cleanup.push(scene.deleteEmbeddedDocuments("Token",created.map(t=>t.id)));
-    if(newCombat) cleanup.push(newCombat.delete());
-    const results=await Promise.allSettled(cleanup);
+    if(combatants.length&&!newCombat)cleanup.push(()=>combat.deleteEmbeddedDocuments("Combatant",combatants.map(c=>c.id)));
+    if(created.length) cleanup.push(()=>scene.deleteEmbeddedDocuments("Token",created.map(t=>t.id)));
+    if(newCombat) cleanup.push(()=>newCombat.delete());
+    const results=[];
+    for(const remove of cleanup){try{await remove();results.push({status:"fulfilled"});}catch(error){results.push({status:"rejected",reason:error});}}
     if(results.some(r=>r.status==="rejected")) {
       ui.notifications.warn("Deployment failed and some scene documents could not be removed. Check the scene and combat tracker.");
     } else {

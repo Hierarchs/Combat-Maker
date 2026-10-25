@@ -28,7 +28,7 @@ export function installFoundry({actors=[],packs=[],party=[],gm=true}={}) {
     const doc={...structuredClone(data),id:`created${++sequence}`,documentName:type,
       getFlag(scope,key){return this.flags?.[scope]?.[key];},
       async update(patch){for(const [key,value]of Object.entries(patch)){const keys=key.split(".");let obj=this;for(const part of keys.slice(0,-1))obj=obj[part]??={};obj[keys.at(-1)]=structuredClone(value);}return this;},
-      async delete(){if(type==="JournalEntry")game.journal.delete(this.id);if(type==="Actor")game.actors.delete(this.id);if(type==="Combat")game.combats.delete(this.id);return this;}
+      async delete(){if(type==="JournalEntry")game.journal.delete(this.id);if(type==="Actor")game.actors.delete(this.id);if(type==="Combat")game.combats.delete(this.id);if(type==="Folder")game.folders.delete(this.id);return this;}
     };
     return doc;
   };
@@ -61,7 +61,7 @@ export function installFoundry({actors=[],packs=[],party=[],gm=true}={}) {
   globalThis.Actor={async create(data){const actor=decorate(newDocument(data,"Actor"));actor.uuid=`Actor.${actor.id}`;allActors.set(actor.id,actor);docs.set(actor.uuid,actor);return actor;}};
   globalThis.Folder={async create(data){const doc=newDocument(data,"Folder");game.folders.set(doc.id,doc);return doc;}};
   globalThis.JournalEntry={async create(data){const doc=newDocument(data,"JournalEntry");game.journal.set(doc.id,doc);return doc;}};
-  globalThis.Combat={async create(data){const doc=newDocument(data,"Combat");doc.scene=scene;doc.createEmbeddedDocuments=async(type,data)=>{doc.combatants=data;return data;};game.combats.set(doc.id,doc);return doc;}};
+  globalThis.Combat={async create(data){const doc=newDocument(data,"Combat");doc.scene=scene;doc.combatants=[];doc.rolls=[];doc.createEmbeddedDocuments=async(type,data)=>{const created=data.map(d=>({...d,id:`combatant${++sequence}`}));doc.combatants.push(...created);return created;};doc.deleteEmbeddedDocuments=async(type,ids)=>{doc.combatants=doc.combatants.filter(c=>!ids.includes(c.id));};doc.rollInitiative=async(ids,options)=>{doc.rolls.push({ids,options});for(const [i,id]of ids.entries()){const c=doc.combatants.find(c=>c.id===id);if(c)c.initiative=10+i;}return doc;};game.combats.set(doc.id,doc);return doc;}};
   globalThis.foundry={...(globalThis.foundry??{}),utils:{fromUuid:globalThis.fromUuid},documents:Object.fromEntries(["Actor","Folder","JournalEntry","Combat"].map(name=>[name,{implementation:globalThis[name]}]))};
   globalThis.canvas={ready:true,scene,grid:{size:100},dimensions:{sceneRect:{x:0,y:0,width:3000,height:2000}},canvasCoordinatesFromClient:p=>p};
   globalThis.ui={notifications:Object.fromEntries(["info","warn","error"].map(type=>[type,message=>notifications.push({type,message})]))};

@@ -3,16 +3,18 @@ import { startPreview } from "./preview.mjs";
 import { mkdir } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { checkHealthUI } from "./health-browser-check.mjs";
+import { checkCampaignUI } from "./campaign-browser-check.mjs";
 
 const server=await startPreview(0);const port=server.address().port;
 let browser;
 try {
   browser=await chromium.launch({channel:process.env.CF_BROWSER_CHANNEL||"chrome",headless:true});
   const page=await browser.newPage({viewport:{width:1440,height:940},deviceScaleFactor:1});
-  const errors=[];page.on("pageerror",error=>errors.push(error.message));
+  const errors=[];page.on("pageerror",error=>{errors.push(error.message);process.stderr.write(`Browser error: ${error.message}\n`);});
+  page.on("console",message=>{if(message.type()==="error")process.stderr.write(`Browser console: ${message.text()}\n`);});
   await mkdir("test-results",{recursive:true});
   await page.goto(`http://127.0.0.1:${port}`);
-  await page.waitForSelector(".cf-monster-table tbody tr");
+  await page.waitForSelector(".cf-monster-table tbody tr",{timeout:10000}).catch(async error=>{process.stderr.write(JSON.stringify(await page.evaluate(()=>({notifications:globalThis.preview?.ctx?.notifications,html:document.querySelector(".cf-root")?.innerHTML.slice(0,500)})))+"\n");throw error;});
   assert.equal(await page.locator(".cf-monster-table tbody tr").count(),26);
   assert.equal(await page.locator(".cf-party-row").count(),3);
   const action=name=>page.locator(`[data-cf-action="${name}"]`).filter({visible:true}).first();
@@ -94,7 +96,7 @@ try {
     c.loadedName="The Crooked Crossing";c.dirty=false;c.paint();
     const {saveEncounter}=await import("/scripts/vault.mjs");
     await saveEncounter("The Crooked Crossing",c.snapshot(),c.loadedId);
-    const more={...c.snapshot(),lines:[{monster:c.catalog.monsters.find(m=>m.name==="Skeleton"),quantity:6},{monster:c.catalog.monsters.find(m=>m.name==="Bugbear"),quantity:2}]};
+    const more={...c.snapshot(),waves:[{id:"mill",name:"The old mill",lines:[{monster:c.catalog.monsters.find(m=>m.name==="Skeleton"),quantity:6},{monster:c.catalog.monsters.find(m=>m.name==="Bugbear"),quantity:2}]}]};
     const {assessEncounter}=await import("/scripts/difficulty.mjs");more.report=assessEncounter(more.lines,c.party,c.rules);
     await saveEncounter("Beneath the Old Mill",more);c.paint();
     document.querySelectorAll(".mock-notification").forEach(el=>el.remove());
@@ -103,9 +105,10 @@ try {
   await page.setViewportSize({width:1080,height:650});
   const layout=await page.evaluate(()=> {
     const root=document.querySelector(".cf-root"),deploy=document.querySelector(".cf-deploy"),footer=document.querySelector(".cf-browser-footer");
-    const bounds=root.getBoundingClientRect();return {overflow:root.scrollWidth>root.clientWidth,deploy:deploy.getBoundingClientRect().bottom<=bounds.bottom+1,footer:footer.getBoundingClientRect().bottom<=bounds.bottom+1};
+    const bounds=root.getBoundingClientRect();return {overflow:root.scrollWidth>root.clientWidth,deploy:deploy.getBoundingClientRect().bottom<=bounds.bottom+1,footer:footer.getBoundingClientRect().bottom<=bounds.bottom+1,listUsable:document.querySelector(".cf-encounter-list").getBoundingClientRect().height>=48};
   });
-  assert.deepEqual(layout,{overflow:false,deploy:true,footer:true});
+  assert.deepEqual(layout,{overflow:false,deploy:true,footer:true,listUsable:true});
+  assert.equal(await page.evaluate(()=>document.querySelector(".cf-party-row").getBoundingClientRect().bottom<=document.querySelector(".cf-party-list").getBoundingClientRect().bottom+1),true);
   await mkdir("test-results",{recursive:true});
   await page.screenshot({path:"test-results/forge-compact.png"});
   await page.setViewportSize({width:1440,height:940});
@@ -113,6 +116,7 @@ try {
   await page.screenshot({path:"test-results/forge.png"});
   await action("generate").click();await page.screenshot({path:"test-results/generator.png"});await page.keyboard.press("Escape");
   await action("tab-vault").click();await page.screenshot({path:"test-results/vault.png"});
+  await checkCampaignUI(page);
   assert.deepEqual(errors,[]);
-  process.stdout.write("Browser checks passed: Forge/Vault workflows, Ledger diagnostics, metadata repairs, persistence and reset, duplicate preference/restore, missing-reference mapping with load and deployment, escaping, and compact layouts.\n");
+  process.stdout.write("Browser checks passed: Forge and Ledger regressions; Vault search, tags, folder rename/delete, notes and JSON round-trip; wave creation and separate deployment; per-group initiative; automatic source repair; recommendations; compact layouts.\n");
 }finally {await browser?.close();await new Promise(resolve=>server.close(resolve));}

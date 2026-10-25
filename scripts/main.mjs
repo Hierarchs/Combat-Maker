@@ -5,6 +5,8 @@ import { generateEncounter } from "./generator.mjs";
 import { normalizeMonster, normalizeCharacter } from "./normalize.mjs";
 import { deployEncounter } from "./deploy.mjs";
 import { EMPTY_REPAIRS } from "./repairs.mjs";
+import { recommendEncounters } from "./recommendations.mjs";
+import { normalizeEncounter } from "./encounters.mjs";
 
 let app;
 export function openForge() {
@@ -34,7 +36,7 @@ Hooks.once("init",()=> {
 
 Hooks.once("ready",()=> {
   const module=game.modules.get(ID);
-  module.api=Object.freeze({open:openForge,assessEncounter,generateEncounter,normalizeMonster,normalizeCharacter,deployEncounter});
+  module.api=Object.freeze({open:openForge,assessEncounter,generateEncounter,recommendEncounters,normalizeEncounter,normalizeMonster,normalizeCharacter,deployEncounter});
 });
 
 Hooks.on("getSceneControlButtons",controls=> {

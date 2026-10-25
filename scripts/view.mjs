@@ -3,6 +3,11 @@ import { formatCR, formatNumber as num } from "./constants.mjs";
 export const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const e=escapeHTML;
 const SYMBOLS = {
+  folder:'<path d="M2 5h7l3 3h10v13H2Z"/>',
+  'hourglass-half':'<path d="M5 2h14M5 22h14M7 2v5l5 5-5 5v5m10-20v5l-5 5 5 5v5M8 5h8M8 19h8"/>',
+  'file-export':'<path d="M13 2H3v20h15v-6M13 2v6h6l-6-6Zm-2 11h11m-4-4 4 4-4 4"/>',
+  'file-import':'<path d="M13 2H3v20h15v-6M13 2v6h6l-6-6Zm9 11H11m4-4-4 4 4 4"/>',
+  compass:'<circle cx="12" cy="12" r="10"/><path d="m16 8-2 6-6 2 2-6Z"/>',
   'feather-pointed':'<path d="M4 20 16 8m-9 9-2-6L16 1l7 1-1 7-11 10-4-2Zm5-5h6m-2-4h6"/>',
   'arrow-right':'<path d="M3 12h18m-7-7 7 7-7 7"/>',
   copy:'<rect x="8" y="8" width="13" height="13" rx="1"/><path d="M16 4V2H2v14h2"/>',
@@ -60,8 +65,8 @@ export function encounterLinesHTML(lines) {
     ${iconButton("remove-monster","Remove creature","xmark",`data-uuid="${e(l.monster.uuid)}"`)}</div>`).join("");
 }
 
-export function summaryHTML(report,rules,hasParty) {
-  return `<div class="cf-summary-stats"><span>Monsters <strong>${num(report.count)}</strong></span><span>Total XP <strong>${num(report.xp)}</strong></span></div>
+export function summaryHTML(report,rules,hasParty,waveCount=1) {
+  return `<div class="cf-summary-stats"><span>${waveCount>1?"Wave monsters":"Monsters"} <strong>${num(report.count)}</strong></span><span>${waveCount>1?"Wave XP":"Total XP"} <strong>${num(report.xp)}</strong></span></div>
   <button type="button" class="cf-difficulty" data-cf-action="explain" title="See the difficulty calculation">
     <div class="cf-difficulty-top"><span>${e(rules.edition)} · ${rules.mode==="official"?"DMG":"Swarm adjusted"}</span>${icon("circle-info")}</div>
     <div class="cf-rating"><span>Full <b class="cf-text-${report.full.tone}">${e(report.full.label)}</b></span><span class="cf-arrow">→</span><span>${rules.dynamic?"Now":"Rating"} <b class="cf-text-${report.shown.tone}">${e(report.shown.label)}</b></span></div>
@@ -70,7 +75,7 @@ export function summaryHTML(report,rules,hasParty) {
   </button>
   ${hasParty?`<div class="cf-party-state">${icon("heart-pulse")} Party at <strong>${report.hpPercent}% HP</strong>${report.bloodied?` · ${report.bloodied} bloodied`:""}${rules.dynamic?`<span>Estimated capacity ${Math.round(report.readiness*100)}%</span>`:""}</div>`:""}
   ${report.warnings.length?`<div class="cf-warning" title="${e(report.warnings.join(" "))}">${icon("triangle-exclamation")} ${e(report.warnings[0])}</div>`:""}
-  ${button("deploy","Deploy encounter","chess-rook",`class="cf-primary cf-deploy" ${!report.count?"disabled":""}`)}`;
+  ${button("deploy",waveCount>1?"Deploy active wave":"Deploy encounter","chess-rook",`class="cf-primary cf-deploy" ${!report.count?"disabled":""}`)}`;
 }
 
 export function monsterRowsHTML(monsters) {
@@ -81,25 +86,14 @@ export function monsterRowsHTML(monsters) {
   <td class="cf-row-actions">${iconButton("sheet",`View ${m.name}`,"eye",`data-uuid="${e(m.uuid)}"`)}${iconButton("repair-monster",`Edit metadata for ${m.name}`,"feather-pointed",`data-uuid="${e(m.uuid)}"`)}</td></tr>`).join("");
 }
 
-export function vaultHTML(entries) {
-  if(!entries.length) return `<div class="cf-vault-empty cf-empty">${icon("vault")}<h2>Your stories, ready for the table.</h2><p>Save an encounter in the Forge and it will be waiting here.</p>${button("tab-forge","Build an encounter","hammer","class=\"cf-primary\"")}</div>`;
-  return `<div class="cf-vault-grid">${entries.map(entry=> {
-    const r=entry.data.report;
-    return `<article class="cf-vault-card"><header><button type="button" class="cf-card-title" data-cf-action="detail" data-id="${e(entry.id)}" title="${e(entry.name)}">${e(entry.name)}</button><div>${iconButton("load","Load into Forge","hammer",`data-id="${e(entry.id)}"`)}${iconButton("deploy-saved","Deploy saved encounter","chess-rook",`data-id="${e(entry.id)}"`)}${iconButton("delete-saved","Delete saved encounter","xmark",`data-id="${e(entry.id)}"`)}</div></header>
-    <button class="cf-card-monsters" type="button" data-cf-action="detail" data-id="${e(entry.id)}">${entry.data.lines.slice(0,4).map(l=>`<span>${portrait(l.monster.img,l.monster.name)}<b>${l.quantity}×</b> ${e(l.monster.name)}<small>CR ${formatCR(l.monster.cr)}</small></span>`).join("")}${entry.data.lines.length>4?`<small>+ ${entry.data.lines.length-4} more species</small>`:""}</button>
-    <dl><div><dt>Monsters</dt><dd>${num(r?.count??entry.data.lines.reduce((n,l)=>n+l.quantity,0))}</dd></div><div><dt>Total XP</dt><dd>${num(r?.xp)}</dd></div><div><dt>Difficulty at save</dt><dd class="cf-text-${e(r?.shown?.tone||"muted")}">${e(entry.data.rules.edition)} ${e(r?.shown?.label||"Unrated")}</dd></div><div><dt>Party</dt><dd title="${e(entry.data.party.map(p=>p.name).join(", "))}">${e(entry.data.party.map(p=>p.name).join(", ")||"No party")}</dd></div></dl>
-    <footer><span>${new Date(entry.data.updatedAt).toLocaleDateString()}</span>${button("detail","View encounter","arrow-up-right-from-square",`data-id="${e(entry.id)}"`)}</footer></article>`;
-  }).join("")}</div>`;
-}
-
 export function shellHTML(state) {
   const {tab,party,missingParty,lines,report,rules,facets:f,filters,monsters,totalMatches,catalog,entries,page,pageSize}=state;
   const pages=Math.max(1,Math.ceil(totalMatches/pageSize));
-  return `<nav class="cf-tabs" aria-label="Combat Forge views"><div role="tablist">${button("tab-forge","The Forge","hammer",`role="tab" aria-selected="${tab==="forge"}" class="${tab==="forge"?"cf-active":""}"`)}${button("tab-vault","The Vault","vault",`role="tab" aria-selected="${tab==="vault"}" class="${tab==="vault"?"cf-active":""}"`)}<span class="cf-vault-count">${entries.length}</span>${button("tab-health","The Ledger","book-open",`role="tab" aria-selected="${tab==="health"}" class="${tab==="health"?"cf-active":""}"`)}</div><span class="cf-tagline">A chronicle of creatures & encounters</span>${iconButton("help","Help and shortcuts","circle-question")}</nav>
+  return `<nav class="cf-tabs" aria-label="Combat Forge views"><div role="tablist">${button("tab-forge","The Forge","hammer",`role="tab" aria-selected="${tab==="forge"}" class="${tab==="forge"?"cf-active":""}"`)}${button("tab-vault","The Vault","vault",`role="tab" aria-selected="${tab==="vault"}" class="${tab==="vault"?"cf-active":""}"`)}<span class="cf-vault-count">${entries.length}</span>${button("tab-health","The Ledger","book-open",`role="tab" aria-selected="${tab==="health"}" class="${tab==="health"?"cf-active":""}"`)}${button("tab-recommended","Recommended","compass",`role="tab" aria-selected="${tab==="recommended"}" class="${tab==="recommended"?"cf-active":""}"`)}</div><span class="cf-tagline">A chronicle of creatures & encounters</span>${iconButton("help","Help and shortcuts","circle-question")}</nav>
   <div class="cf-body ${tab!=="forge"?"cf-hidden":""}" role="tabpanel" aria-label="The Forge">
     <aside class="cf-sidebar"><section class="cf-party" data-drop="party"><header class="cf-section-header"><h2>Party <span>${party.length}</span></h2><div>${iconButton("choose-party","Choose party","user-plus")}${iconButton("clear-party","Clear party","xmark")}</div></header><div class="cf-party-list" data-scroll="party">${partyHTML(party,missingParty)}</div><button type="button" class="cf-add-party" data-cf-action="choose-party">${icon("plus")} Choose adventurers <span>or drop character actors</span></button></section>
-    <section class="cf-encounter" data-drop="encounter"><header class="cf-section-header"><h2>Encounter</h2><div>${button("save","Save","floppy-disk",!lines.length?"disabled":"")}${iconButton("clear-encounter","Clear encounter","xmark")}</div></header>${state.loadedName?`<div class="cf-loaded">${icon("bookmark")} ${e(state.loadedName)}${state.dirty?" <b>· edited</b>":""}</div>`:""}<div class="cf-encounter-list" data-scroll="encounter">${encounterLinesHTML(lines)}</div></section>
-    <section class="cf-summary">${summaryHTML(report,rules,party.length>0)}</section></aside>
+    <section class="cf-encounter" data-drop="encounter"><header class="cf-section-header"><h2>Encounter</h2><div>${button("save","Save","floppy-disk",!state.totalMonsterCount?"disabled":"")}${iconButton("clear-encounter","Clear encounter","xmark")}</div></header>${state.waveMarkup||""}${state.loadedName?`<div class="cf-loaded">${icon("bookmark")} ${e(state.loadedName)}${state.dirty?" <b>· edited</b>":""}</div>`:""}<div class="cf-encounter-list" data-scroll="encounter">${encounterLinesHTML(lines)}</div></section>
+    <section class="cf-summary">${summaryHTML(report,rules,party.length>0,state.waveCount)}</section></aside>
     <main class="cf-browser" data-drop="catalog"><div class="cf-toolbar"><div class="cf-search">${icon("magnifying-glass")}<input name="search" type="search" placeholder="Search name or book…" aria-label="Search monsters" value="${e(filters.search)}"><kbd>/</kbd></div><span class="cf-monster-count">${num(catalog.monsters.length)} creatures</span>${iconButton("refresh","Re-index compendiums","arrows-rotate",catalog.running?"disabled":"")}${iconButton("sources","Compendium sources","books")}${iconButton("rules","Rules and difficulty settings","sliders")}${button("generate","Generate","dice-d20","class=\"cf-generate-button\"")}</div>
     <div class="cf-filters">${["type","size","book","edition","alignment","environment"].map(k=>select(k,k[0].toUpperCase()+k.slice(1),f[k]||[],filters[k],k[0].toUpperCase()+k.slice(1),"data-filter")).join("")}${select("legendary","Legendary",[{value:"yes",label:"Legendary"},{value:"no",label:"Non-legendary"}],filters.legendary,"Legendary","data-filter")}<label class="cf-cr-range"><span>CR</span><input name="minCR" aria-label="Minimum CR" placeholder="min" value="${e(filters.minCR)}" data-filter><span>–</span><input name="maxCR" aria-label="Maximum CR" placeholder="max" value="${e(filters.maxCR)}" data-filter></label>${button("clear-filters","Reset",null,"class=\"cf-reset\"")}</div>
     ${state.progress?`<div class="cf-index-status" role="status">${icon("spinner")} Indexing ${e(state.progress.label)} · ${state.progress.done}/${state.progress.total}</div>`:""}
@@ -107,7 +101,8 @@ export function shellHTML(state) {
     <div class="cf-table-scroll" data-scroll="monsters"><table class="cf-monster-table"><thead><tr>${[["name","Name / Book"],["cr","CR"],["type","Type"],["size","Size"],["xp","XP"],["edition","Edition"]].map(([key,label])=>`<th scope="col" aria-sort="${state.sort===key?(state.desc?"descending":"ascending"):"none"}"><button type="button" data-cf-action="sort" data-key="${key}" class="${state.sort===key?"cf-sorted":""}">${label}${state.sort===key?icon(state.desc?"caret-down":"caret-up"):""}</button></th>`).join("")}<th scope="col"><span class="cf-sr-only">Actions</span></th></tr></thead><tbody>${monsterRowsHTML(monsters)}</tbody></table>
     ${!monsters.length?`<div class="cf-empty cf-catalog-empty">${icon(catalog.monsters.length?"magnifying-glass":"books")}<h3>${catalog.running?"Indexing your bestiary…":catalog.monsters.length?"No creatures match":"Build your bestiary"}</h3><p>${catalog.monsters.length?"Try another filter or search term.":"Choose installed Actor compendiums, or drop a homebrew NPC into this window."}</p>${button(catalog.monsters.length?"clear-filters":"sources",catalog.monsters.length?"Clear filters":"Choose sources","sliders")}</div>`:""}</div>
     <footer class="cf-browser-footer"><span>${totalMatches?`${num(page*pageSize+1)}–${num(Math.min((page+1)*pageSize,totalMatches))} of ${num(totalMatches)}`:"0"} matching · Drop NPC actors to add homebrew</span><div>${iconButton("previous-page","Previous page","chevron-left",page===0?"disabled":"")}<span>${page+1} / ${pages}</span>${iconButton("next-page","Next page","chevron-right",page>=pages-1?"disabled":"")}</div></footer></main>
-  </div><main class="cf-vault ${tab!=="vault"?"cf-hidden":""}" role="tabpanel" aria-label="The Vault"><header class="cf-vault-header"><div><span class="cf-eyebrow">THE VAULT</span><h2>Encounters worth keeping.</h2></div><span>${entries.length} saved encounter${entries.length===1?"":"s"}</span></header>${vaultHTML(entries)}</main>
+  </div><main class="cf-vault ${tab!=="vault"?"cf-hidden":""}" role="tabpanel" aria-label="The Vault">${state.vaultMarkup||""}</main>
+  <main class="cf-recommendations ${tab!=="recommended"?"cf-hidden":""}" role="tabpanel" aria-label="Recommended encounters">${state.recommendedMarkup||""}</main>
   <main class="cf-ledger ${tab!=="health"?"cf-hidden":""}" role="tabpanel" aria-label="The Bestiary Ledger">${state.ledgerHTML||""}</main>
   <div class="cf-toast ${state.toast?"":"cf-hidden"}" role="status">${e(state.toast)}</div><dialog class="cf-dialog" aria-label="Combat Forge dialog"></dialog>`;
 }

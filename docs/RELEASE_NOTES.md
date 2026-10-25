@@ -1,11 +1,13 @@
-Combat Forge v1.1.0 — the Bestiary Ledger and an Oblivion-inspired parchment interface.
+Combat Forge v1.2.0 — an organized Vault, waves and reinforcements, and recommended encounters.
 
-- New Bestiary Ledger identifies individual NPCs with missing CR, book, edition, or environments, including creatures that cannot yet be listed in the browser.
-- Edit metadata from the Ledger or the browser's quill. Corrections are stored in module world settings; source packs and actors remain untouched. Reset to source metadata at any time.
-- Review possible duplicates, choose a preferred copy, and restore hidden entries. Different editions and CRs stay separate, and no actors are deleted.
-- Scan saved encounters and dropped references for missing actors. Explicit replacement mappings work when loading encounters and deploying old Vault entries. Cycles are rejected.
-- New parchment panels, sepia serif typography, fine gold borders, and engraved controls throughout the Forge, Vault, Ledger, and dialogs. Uses original SVG/CSS artwork with no game assets or external fonts.
-- Keeps existing v1.0 encounters and settings. 37 automated engine/integration tests plus browser workflow checks; live Foundry V14 world smoke testing remains pending.
+- Vault search across names, monsters, tags, notes, and waves; tag filtering, native folders, sorting, and pagination. Rename/delete folders while keeping encounters.
+- Encounter and wave notes, versioned JSON export/import with preview, safe validation, new-copy naming, and rollback on import failures.
+- Automatic encounter-specific repair dialogs for missing source actors on load or deployment, using the existing Ledger correction/replacement tools.
+- Up to 10 named waves, each with arrival notes, independent lists and ratings, reordering, and separate scene deployment. Totals and peak-wave ratings are clearly distinguished.
+- Optional initiative rolls for only the newly arriving group, preserving existing initiatives and the current combatant. Hidden groups roll privately to the GM. Scene tokens retain encounter/wave identifiers.
+- Recommended patrols, skirmishes, elite foes, and reinforcement plans from actual installed monsters and current party budgets, plus ranked suggestions from the Vault.
+- Retains the parchment theme and existing metadata repairs. v1.0/v1.1 encounters upgrade to an opening wave without rewriting their journals until saved.
+- 48 engine/integration tests plus browser workflows for the new features. Live Foundry V14/D&D5e world testing remains pending.
 
 Install through Foundry using:
 
