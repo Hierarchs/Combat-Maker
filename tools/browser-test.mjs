@@ -4,6 +4,7 @@ import { mkdir } from "node:fs/promises";
 import assert from "node:assert/strict";
 import { checkHealthUI } from "./health-browser-check.mjs";
 import { checkCampaignUI } from "./campaign-browser-check.mjs";
+import { checkOptimizationsUI } from "./performance-browser-check.mjs";
 
 const server=await startPreview(0);const port=server.address().port;
 let browser;
@@ -17,6 +18,7 @@ try {
   await page.waitForSelector(".cf-monster-table tbody tr",{timeout:10000}).catch(async error=>{process.stderr.write(JSON.stringify(await page.evaluate(()=>({notifications:globalThis.preview?.ctx?.notifications,html:document.querySelector(".cf-root")?.innerHTML.slice(0,500)})))+"\n");throw error;});
   assert.equal(await page.locator(".cf-monster-table tbody tr").count(),26);
   assert.equal(await page.locator(".cf-party-row").count(),3);
+  await checkOptimizationsUI(page);
   const action=name=>page.locator(`[data-cf-action="${name}"]`).filter({visible:true}).first();
   // Rows and controls, searching, keyboard, and independent filter resets.
   await page.getByRole("button",{name:"Add Aberrant Cultist to encounter",exact:true}).click();
@@ -118,5 +120,5 @@ try {
   await action("tab-vault").click();await page.screenshot({path:"test-results/vault.png"});
   await checkCampaignUI(page);
   assert.deepEqual(errors,[]);
-  process.stdout.write("Browser checks passed: Forge and Ledger regressions; Vault search, tags, folder rename/delete, notes and JSON round-trip; wave creation and separate deployment; per-group initiative; automatic source repair; recommendations; compact layouts.\n");
+  process.stdout.write("Browser checks passed: cache invalidation, retained bestiary DOM, focus/pagination/scroll, selective resource hooks; Forge and Ledger regressions; Vault search, tags, folder rename/delete, notes and JSON round-trip; waves and initiative; source repair; recommendations; compact layouts.\n");
 }finally {await browser?.close();await new Promise(resolve=>server.close(resolve));}

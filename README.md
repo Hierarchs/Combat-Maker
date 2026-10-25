@@ -168,6 +168,8 @@ The package uses V14 `ApplicationV2`, the current scene-control record format, n
 
 ## Releases
 
+v1.3.0 optimizes catalogue queries, Vault snapshots, redraws, resource hooks, encounter generation, and crowded-scene placement. With 10,026 monsters and 500 saved encounters in the local mock-world benchmark, warm Forge redraws fell from 23.7 to 1.2 ms. The parchment theme and existing features are preserved; no new settings are required. See [performance measurements, cache behavior, and reproduction commands](docs/PERFORMANCE.md). These measurements do not replace live Foundry world testing.
+
 The GitHub Actions release workflow checks, tests, packages, and publishes `combat-maker.zip` and `module.json` when a `v*` tag is pushed. The tag must match the manifest and package version. Update `module.json`'s download URL with each version, then push the tag. The stable installation URL always points to the latest release's manifest.
 
 ## References and license

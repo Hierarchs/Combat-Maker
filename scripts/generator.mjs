@@ -1,5 +1,5 @@
 import { MAX_MONSTERS, clamp } from "./constants.mjs";
-import { adjustedXP, encounterTotals, generationTarget, rulesConfig } from "./difficulty.mjs";
+import { adjustedXP, encounterTotals, generationTarget, rulesConfig, monsterMultiplier } from "./difficulty.mjs";
 import { filterMonsters } from "./normalize.mjs";
 
 /** Bounded randomized beam search. Never relaxes filters or count/species caps. */
@@ -19,15 +19,25 @@ export function generateEncounter(monsters, party, options = {}, rng = Math.rand
   const value = lines => byCR ? encounterTotals(lines).cr : adjustedXP(lines,party.length,rules).xp;
   const distance = score => Math.abs(score-goal.target)/goal.target + (score>goal.max ? 0.2 : 0);
   const sorted = [...pool].sort((a,b)=>(byCR?a.cr-b.cr:a.xp-b.xp));
+  const result=best=>({lines:best.lines,score:best.score,target:goal.target,withinTarget:best.score>=goal.min && best.score<=goal.max,
+    message:best.score>=goal.min && best.score<=goal.max ? "Encounter generated within your target range."
+      : "Closest match found. Your filters and monster limits cannot reach the requested target in this search."});
+  // All strongest creatures attain the maximum possible CR/XP, including swarm
+  // multipliers. No randomized search can improve this provably unreachable case.
+  const upper=[{monster:sorted.at(-1),quantity:maxMonsters}],upperScore=value(upper);
+  if(upperScore<goal.min)return result({lines:upper,score:upperScore});
+  const lower=[{monster:sorted[0],quantity:1}],lowerScore=value(lower);
+  if(lowerScore>goal.max)return result({lines:lower,score:lowerScore});
+  const multiplied=!byCR&&(rules.edition==="2014"||rules.mode==="swarm");
   let best = null;
   // Preserve representatives across the entire power range for large catalogues.
   const representatives = sorted.length <= 120 ? sorted : Array.from({length:120},(_,i)=>sorted[Math.round(i*(sorted.length-1)/119)]);
   for (let attempt=0; attempt<18; attempt++) {
     const sampled = [...new Map([...representatives,...Array.from({length:40},()=>pool[Math.floor(rng()*pool.length)])]
       .map(m=>[m.uuid,m])).values()];
-    let beam = [{lines:[],score:0}];
+    let beam = [{lines:[],score:0,xp:0,cr:0,strongest:0}];
     for (let depth=0;depth<maxMonsters;depth++) {
-      const next = [];
+      const unique = new Map();
       for (const state of beam) {
         const candidates = state.lines.length >= maxSpecies ? state.lines.map(l=>l.monster) : sampled;
         for (const monster of candidates) {
@@ -35,23 +45,21 @@ export function generateEncounter(monsters, party, options = {}, rng = Math.rand
           const existing = lines.find(l=>l.monster.uuid===monster.uuid);
           if (existing) existing.quantity++;
           else lines.push({monster,quantity:1});
-          const score = value(lines);
-          const candidate = {lines,score,noise:rng()*0.015};
-          if (!best || distance(score)<distance(best.score)) best=candidate;
-          if (score <= goal.max*1.2) next.push(candidate);
+          const xp=state.xp+monster.xp,cr=state.cr+monster.cr,strongest=Math.max(state.strongest,monster.xp);
+          const counted=rules.mode==="swarm"?lines.reduce((n,l)=>n+(l.monster.xp>=strongest*0.1?l.quantity:0),0):depth+1;
+          const score=byCR?cr:Math.round(xp*(multiplied?monsterMultiplier(counted,party.length):1));
+          const candidate = {lines,score,xp,cr,strongest,distance:distance(score),noise:rng()*0.015};
+          if (!best || candidate.distance<best.distance) best=candidate;
+          if(score<=goal.max*1.2){
+            const key=lines.map(l=>`${l.monster.uuid}:${l.quantity}`).sort().join("|");
+            if(!unique.has(key))unique.set(key,candidate);
+          }
         }
       }
-      const unique = new Map();
-      for (const state of next) {
-        const key=state.lines.map(l=>`${l.monster.uuid}:${l.quantity}`).sort().join("|");
-        if (!unique.has(key)) unique.set(key,state);
-      }
-      beam=[...unique.values()].sort((a,b)=>distance(a.score)-distance(b.score)+a.noise-b.noise).slice(0,12);
+      beam=[...unique.values()].sort((a,b)=>a.distance-b.distance+a.noise-b.noise).slice(0,12);
       if (!beam.length || (best.score>=goal.min && best.score<=goal.max && Math.abs(best.score-goal.target)<goal.target*0.03)) break;
     }
     if (best && best.score>=goal.min && best.score<=goal.max) break;
   }
-  return {lines:best.lines,score:best.score,target:goal.target,withinTarget:best.score>=goal.min && best.score<=goal.max,
-    message:best.score>=goal.min && best.score<=goal.max ? "Encounter generated within your target range."
-      : "Closest match found. Your filters and monster limits cannot reach the requested target in this search."};
+  return result(best);
 }

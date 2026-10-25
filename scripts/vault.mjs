@@ -3,6 +3,14 @@ import { normalizeEncounter, textField } from "./encounters.mjs";
 
 export const validateEncounter=normalizeEncounter;
 const parentId=doc=>typeof doc.folder==="string"?doc.folder:doc.folder?.id;
+// A document hook invalidates in-place flag edits; identity also catches replaced flags.
+// Weak keys release cached snapshots when Foundry releases their Journal documents.
+const snapshots=new WeakMap();
+export function invalidateVaultEntry(journal){return snapshots.delete(journal);}
+function freezeSnapshot(value){
+  if(value&&typeof value==="object"&&!Object.isFrozen(value)){for(const child of Object.values(value))freezeSnapshot(child);Object.freeze(value);}
+  return value;
+}
 function requireGM(){if(!game.user.isGM)throw new Error("Only a GM can save or organize encounters.");}
 export function vaultFolders(){return [...game.folders].filter(f=>f.type==="JournalEntry"&&f.getFlag(ID,"vaultFolder")).sort((a,b)=>a.name.localeCompare(b.name));}
 async function rootFolder(){
@@ -34,8 +42,18 @@ export function vaultEntries() {
   const entries=[];
   for(const journal of game.journal){
     const raw=journal.getFlag(ID,"encounter");if(![1,2].includes(raw?.schema))continue;
-    try{const data=normalizeEncounter(raw),folder=game.folders.get(parentId(journal));data.folder=folder?.getFlag(ID,"vaultFolder")?folder.name:"";entries.push({id:journal.id,name:journal.name,data});}
-    catch(error){console.warn(`${ID} | Cannot read saved encounter ${journal.name}`,error);}
+    let cached=snapshots.get(journal);
+    if(!cached||cached.raw!==raw){
+      cached={raw};snapshots.set(journal,cached);
+      try{cached.data=freezeSnapshot(normalizeEncounter(raw));}
+      catch(error){console.warn(`${ID} | Cannot read saved encounter ${journal.name}`,error);}
+    }
+    if(!cached.data)continue;
+    const folder=game.folders.get(parentId(journal)),name=folder?.getFlag(ID,"vaultFolder")?folder.name:"";
+    if(!cached.entry||cached.entry.name!==journal.name||cached.entry.data.folder!==name){
+      cached.entry=Object.freeze({id:journal.id,name:journal.name,data:Object.freeze({...cached.data,folder:name})});
+    }
+    entries.push(cached.entry);
   }
   return entries.sort((a,b)=>b.data.updatedAt-a.data.updatedAt);
 }
@@ -49,7 +67,7 @@ export async function saveEncounter(name,data,id=null) {
   const folder=encounter.folder?await createVaultFolder(encounter.folder):await rootFolder();
   const saved=journal?await journal.update({name,folder:folder.id,[`flags.${ID}.encounter`]:encounter})
     :await foundry.documents.JournalEntry.implementation.create({name,folder:folder.id,ownership:{default:0},flags:{[ID]:{encounter}}});
-  if(!saved)throw new Error("Foundry did not save the encounter. The operation may have been canceled.");return saved;
+  if(!saved)throw new Error("Foundry did not save the encounter. The operation may have been canceled.");invalidateVaultEntry(saved);return saved;
 }
 
 export async function importVault(entries){

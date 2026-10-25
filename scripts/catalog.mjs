@@ -1,5 +1,5 @@
 import { ID, INDEX_FIELDS } from "./constants.mjs";
-import { describeMonster } from "./normalize.mjs";
+import { describeMonster, facets } from "./normalize.mjs";
 import { repairState, resolveReplacement, duplicateGroups } from "./repairs.mjs";
 
 export function actorPacks() {
@@ -21,9 +21,14 @@ export class MonsterCatalog {
   references = [];
   auditedAt = null;
   repairs = {actors:{},replacements:{}};
+  revision = 0;
+  _duplicates = null;
+  _issueCount = null;
+  _facets = null;
 
-  get duplicates() {return duplicateGroups(this.records);}
-  get issueCount() {return this.records.filter(r=>r.issues.length&&!r.hidden).length;}
+  get duplicates() {return this._duplicates ??= duplicateGroups(this.records);}
+  get issueCount() {return this._issueCount ??= this.records.reduce((n,r)=>n+Number(r.issues.length>0&&!r.hidden),0);}
+  get facets() {return this._facets ??= facets(this.monsters);}
   get referenceCount() {return this.references.filter(r=>r.status!=="mapped").length;}
   get(uuid) {
     const resolved=resolveReplacement(uuid,this.repairs.replacements);
@@ -37,6 +42,7 @@ export class MonsterCatalog {
     if(!description)return null;
     const {monster,issues,...details}=description;
     const correction=this.repairs.actors[monster.uuid]??{};
+    this._duplicates=null;this._issueCount=null;
     const record={uuid:monster.uuid,name:monster.name,img:monster.img,pack:monster.pack,packLabel:monster.packLabel,
       description:monster,monster:monster.cr===null?null:monster,issues,...details,listed,hidden:Boolean(correction.hidden),
       corrected:Object.keys(correction).some(key=>key!=="hidden"),mappedTo:this.repairs.replacements[monster.uuid]||null,correction};
@@ -49,6 +55,7 @@ export class MonsterCatalog {
     this.monsters=this.records.filter(r=>r.listed&&!r.hidden&&!r.mappedTo&&r.monster).map(r=>r.monster)
       .sort((a,b)=>a.name.localeCompare(b.name)||a.edition.localeCompare(b.edition));
     this.skipped=this.records.filter(r=>r.listed&&!r.monster).length;
+    this._facets=null;this._duplicates=null;this._issueCount=null;this.revision++;
   }
 
   async refresh(onProgress = ()=>{}) {
@@ -113,7 +120,7 @@ export class MonsterCatalog {
     };
     for(const entry of entries)for(const line of entry.data.lines)add(line.monster.uuid,line.monster.name,`Vault: ${entry.name}`);
     for(const line of draftLines)add(line.monster.uuid,line.monster.name,"Current draft");
-    for(const uuid of game.settings.get(ID,"homebrew"))add(uuid,this.records.find(r=>r.uuid===uuid)?.name,"Dropped actor");
+    for(const uuid of game.settings.get(ID,"homebrew"))add(uuid,this.byUuid.get(uuid)?.name,"Dropped actor");
     // Keep mappings reviewable even after an encounter has been re-saved with its new UUID.
     for(const uuid of Object.keys(this.repairs.replacements))add(uuid,null,"Saved replacement");
     const results=[];

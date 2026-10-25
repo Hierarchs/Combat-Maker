@@ -1,15 +1,16 @@
-Combat Forge v1.2.1 — an organized Vault, waves and reinforcements, and recommended encounters.
+Combat Forge v1.3.0 — faster encounter editing, Vault browsing, and crowded deployments.
 
-- Vault search across names, monsters, tags, notes, and waves; tag filtering, native folders, sorting, and pagination. Rename/delete folders while keeping encounters.
-- Encounter and wave notes, versioned JSON export/import with preview, safe validation, new-copy naming, and rollback on import failures.
-- Automatic encounter-specific repair dialogs for missing source actors on load or deployment, using the existing Ledger correction/replacement tools.
-- Up to 10 named waves, each with arrival notes, independent lists and ratings, reordering, and separate scene deployment. Totals and peak-wave ratings are clearly distinguished.
-- Optional initiative rolls for only the newly arriving group, preserving existing initiatives and the current combatant. Hidden groups roll privately to the GM. Scene tokens retain encounter/wave identifiers.
-- Recommended patrols, skirmishes, elite foes, and reinforcement plans from actual installed monsters and current party budgets, plus ranked suggestions from the Vault.
-- Retains the parchment theme and existing metadata repairs. v1.0/v1.1 encounters upgrade to an opening wave without rewriting their journals until saved.
-- 50 engine/integration tests plus browser workflows for the new features. Live Foundry V14/D&D5e world testing remains pending.
+- Reuses catalogue queries, facets, duplicate groups, and immutable Vault snapshots with invalidation on edits and repairs.
+- Retains the unchanged bestiary table during party/quantity updates, renders only the active view, and preserves focus, pagination, and scroll positions.
+- NPC HP changes no longer rebuild the compendium catalogue; unrelated actors and token movement no longer refresh the selected party. Party resource, item, effect, and synthetic-token updates remain live.
+- Spatial indexing speeds placement on crowded scenes while preserving collision checks, snapping, and deployment rollback. Huge custom footprints use a bounded fallback.
+- Generator reuses running totals and detects mathematically unreachable targets before searching. Filters, count caps, and official/swarm scoring remain enforced.
+- Local warm mock-world benchmark: 10,026 monsters and 500 encounters; Forge redraw 23.7 → 1.2 ms, Vault 19.7 → 4.3 ms, Ledger 19.3 → 1.3 ms. Crowded 100-token placement 48.8 → 9.7 ms. These are synthetic measurements, not live-world guarantees. See docs/PERFORMANCE.md for methodology and raw results.
+- 57 engine/integration tests plus full Chrome workflows, including new cache, hook, DOM-retention, focus, pagination, and collision-oracle checks. Live Foundry V14/D&D5e world testing remains pending.
 
-Install through Foundry using:
+The parchment interface, Vault organization/JSON transfer, waves, initiative, source repairs, and recommendations remain available. No migration or new settings are required.
+
+Install or update through Foundry using:
 
 `https://github.com/Hierarchs/Combat-Maker/releases/latest/download/module.json`
 

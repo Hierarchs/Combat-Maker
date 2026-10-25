@@ -1,5 +1,5 @@
 import { ID, DEFAULT_RULES, MAX_MONSTERS, formatNumber as num, formatCR } from "./constants.mjs";
-import { normalizeCharacter, filterMonsters, facets } from "./normalize.mjs";
+import { normalizeCharacter, filterMonsters } from "./normalize.mjs";
 import { assessEncounter, rulesConfig } from "./difficulty.mjs";
 import { generateEncounter } from "./generator.mjs";
 import { actorPacks, actorPack, MonsterCatalog } from "./catalog.mjs";
@@ -17,6 +17,7 @@ export class ForgeController {
     this.loadedId=null;this.loadedName="";this.dirty=false;this.progress=null;this.toast="";this.busy=false;
     this.abort=new AbortController();this.writeQueue=Promise.resolve();
     this.health={section:"metadata",filter:"issues",search:"",pack:"",page:0,scanning:false};
+    this.scrollPositions=new Map();
     this.initCampaign();
   }
 
@@ -85,26 +86,43 @@ export class ForgeController {
     this.writeQueue=this.writeQueue.catch(()=>{}).then(()=>game.settings.set(ID,"draft",data)).catch(error=>this.error(error));
   }
 
+  matchingMonsters() {
+    const key=JSON.stringify([this.filters,this.sort,this.desc]),source=this.catalog.monsters;
+    if(this.monsterQuery?.source===source&&this.monsterQuery.key===key)return this.monsterQuery.matches;
+    const matches=filterMonsters(source,this.filters),sizeOrder=["Tiny","Small","Medium","Large","Huge","Gargantuan"],keyName=this.sort;
+    matches.sort((a,b)=> {
+      const cmp=keyName==="size"?sizeOrder.indexOf(a.size)-sizeOrder.indexOf(b.size)
+        : typeof a[keyName]==="number"?a[keyName]-b[keyName]:String(a[keyName]).localeCompare(String(b[keyName]));
+      return (cmp||a.name.localeCompare(b.name))*(this.desc?-1:1);
+    });
+    this.monsterQuery={source,key,matches};return matches;
+  }
+
   paint() {
     if(this.abort.signal.aborted)return;
     if(this.dialog?.open){this.paintPending=true;return;}
     const active=this.root.contains(document.activeElement)?document.activeElement:null;
     const focusName=active?.name;
     const selection=active?.type==="search" || active?.type==="text" ? [active.selectionStart,active.selectionEnd] : null;
-    const scrolls=[...this.root.querySelectorAll("[data-scroll]")].map(el=>[el.dataset.scroll,el.scrollTop]);
-    let matches=filterMonsters(this.catalog.monsters,this.filters);
-    const sizeOrder=["Tiny","Small","Medium","Large","Huge","Gargantuan"];
-    matches.sort((a,b)=> {
-      const key=this.sort;
-      const cmp=key==="size"?sizeOrder.indexOf(a.size)-sizeOrder.indexOf(b.size)
-        : typeof a[key]==="number"?a[key]-b[key]:String(a[key]).localeCompare(String(b[key]));
-      return (cmp||a.name.localeCompare(b.name))*(this.desc?-1:1);
-    });
-    this.page=Math.max(0,Math.min(this.page,Math.ceil(matches.length/this.pageSize)-1));
-    this.root.innerHTML=shellHTML({...this,lines:this.lines,report:this.report,facets:facets(this.catalog.monsters),
-      monsters:matches.slice(this.page*this.pageSize,(this.page+1)*this.pageSize),totalMatches:matches.length,entries:this.entries,
-      ledgerHTML:this.tab==="health"?healthHTML(this.catalog,this.health):"",...this.campaignView()});
-    for(const [key,top] of scrolls) this.root.querySelector(`[data-scroll="${key}"]`)?.scrollTo(0,top);
+    for(const el of this.root.querySelectorAll("[data-scroll]"))this.scrollPositions.set(el.dataset.scroll,el.scrollTop);
+    const matches=this.tab==="forge"?this.matchingMonsters():[],entries=this.entries;
+    if(this.tab==="forge")this.page=Math.max(0,Math.min(this.page,Math.ceil(matches.length/this.pageSize)-1));
+    // Party, quantities and notifications do not change the bestiary. Keep that
+    // DOM subtree (and its loaded portraits) until a query or catalogue changes.
+    const browser=this.tab==="forge"?this.root.querySelector(".cf-browser"):null;
+    const browserKey=JSON.stringify([this.page,this.pageSize,this.progress,Boolean(this.catalog.running)]);
+    const reuseBrowser=Boolean(browser&&this.browserStamp?.query===this.monsterQuery&&this.browserStamp.key===browserKey&&this.browserStamp.errors===this.catalog.errors);
+    const html=shellHTML({...this,lines:this.lines,report:this.tab==="forge"?this.report:null,facets:this.tab==="forge"?this.catalog.facets:{},
+      monsters:matches.slice(this.page*this.pageSize,(this.page+1)*this.pageSize),totalMatches:matches.length,entries,reuseBrowser,
+      ledgerHTML:this.tab==="health"?healthHTML(this.catalog,this.health):"",...this.campaignView(entries)});
+    if(reuseBrowser){
+      const template=document.createElement("template");template.innerHTML=html;
+      for(const selector of [".cf-tabs",".cf-sidebar",".cf-toast",".cf-dialog"]){
+        this.root.querySelector(selector).replaceWith(template.content.querySelector(selector));
+      }
+    }else this.root.innerHTML=html;
+    this.browserStamp={query:this.monsterQuery,key:browserKey,errors:this.catalog.errors};
+    for(const [key,top] of this.scrollPositions) this.root.querySelector(`[data-scroll="${key}"]`)?.scrollTo(0,top);
     if(focusName) {
       const input=[...this.root.querySelectorAll("[name]")].find(el=>el.name===focusName);
       input?.focus({preventScroll:true});if(input && selection)input.setSelectionRange(...selection);
@@ -341,7 +359,7 @@ export class ForgeController {
   }
 
   generateDialog() {
-    const f=facets(this.catalog.monsters);
+    const f=this.catalog.facets;
     const labels=this.rules.edition==="2014"?["Easy","Medium","Hard","Deadly"]:["Low","Moderate","High"];
     const body=`<span class="cf-eyebrow">LET THE DICE DO THE WORK</span>
       ${select("balance","Balance by",[{value:"difficulty",label:"Difficulty — balance against the party"},{value:"cr",label:"CR — combined challenge rating"}],"difficulty",null)}
@@ -383,7 +401,7 @@ export class ForgeController {
   }
 
   helpDialog() {
-    this.showDialog("Welcome to Combat Forge",`<span class="cf-eyebrow">BUILD A FIGHT. TELL A STORY.</span><ol class="cf-help-steps"><li><b>Choose your party.</b> Use the person button or drop character Actors onto the party panel.</li><li><b>Connect your bestiary.</b> The books button configures sources. All Actor packs are discovered automatically by default.</li><li><b>Forge an encounter.</b> Click creatures, adjust quantities, or use Generate. Open the eye button to inspect a stat block.</li><li><b>Watch the difficulty.</b> Full shows the rested party; Now estimates their current state. Click the rating for the math.</li><li><b>Keep it in the Vault.</b> Save a named encounter, then load, edit, inspect, or deploy it any time.</li><li><b>Deploy to the scene.</b> Choose your placement and whether to hide tokens or add them to combat.</li></ol><h3>Homebrew & metadata</h3><p>Drop a world or compendium NPC onto the monster list to keep a reference. Missing CR opens the Ledger repair form. The source Actor's creature type, size, source book/rules, alignment, habitat, and legendary resources power the filters. Use The Ledger to repair missing CR, book, edition, or environments; review duplicate copies; and replace broken saved references. Corrections stay in module world settings.</p><h3>Waves &amp; recommendations</h3><p>The wave selector keeps separate creature groups, arrival notes, and deployment controls. Save stores every wave. The Vault supports search, folders, tags, notes, and JSON files; missing actors open a repair dialog. Recommended builds party-based encounter plans from your enabled bestiary.</p><p>Press <kbd>/</kbd> in this window to search. Focus a creature row and press Enter or Space to add it.</p><small>Combat Forge 1.2.1 · Foundry VTT 14 · D&D5e · No monster content is bundled.</small>`);
+    this.showDialog("Welcome to Combat Forge",`<span class="cf-eyebrow">BUILD A FIGHT. TELL A STORY.</span><ol class="cf-help-steps"><li><b>Choose your party.</b> Use the person button or drop character Actors onto the party panel.</li><li><b>Connect your bestiary.</b> The books button configures sources. All Actor packs are discovered automatically by default.</li><li><b>Forge an encounter.</b> Click creatures, adjust quantities, or use Generate. Open the eye button to inspect a stat block.</li><li><b>Watch the difficulty.</b> Full shows the rested party; Now estimates their current state. Click the rating for the math.</li><li><b>Keep it in the Vault.</b> Save a named encounter, then load, edit, inspect, or deploy it any time.</li><li><b>Deploy to the scene.</b> Choose your placement and whether to hide tokens or add them to combat.</li></ol><h3>Homebrew & metadata</h3><p>Drop a world or compendium NPC onto the monster list to keep a reference. Missing CR opens the Ledger repair form. The source Actor's creature type, size, source book/rules, alignment, habitat, and legendary resources power the filters. Use The Ledger to repair missing CR, book, edition, or environments; review duplicate copies; and replace broken saved references. Corrections stay in module world settings.</p><h3>Waves &amp; recommendations</h3><p>The wave selector keeps separate creature groups, arrival notes, and deployment controls. Save stores every wave. The Vault supports search, folders, tags, notes, and JSON files; missing actors open a repair dialog. Recommended builds party-based encounter plans from your enabled bestiary.</p><p>Press <kbd>/</kbd> in this window to search. Focus a creature row and press Enter or Space to add it.</p><small>Combat Forge 1.3.0 · Foundry VTT 14 · D&D5e · No monster content is bundled.</small>`);
   }
 }
 

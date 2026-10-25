@@ -3,9 +3,33 @@ import { resolveReplacement, repairState } from "./repairs.mjs";
 
 const overlaps = (a,b) => a.x < b.x+b.width-1 && a.x+a.width > b.x+1 && a.y < b.y+b.height-1 && a.y+a.height > b.y+1;
 
+// Query nearby footprints instead of every token on the scene for every grid point.
+// Huge custom footprints use a separate list to keep bucket memory bounded.
+class Occupancy {
+  constructor(cellSize){this.cellSize=cellSize;this.cells=new Map();this.large=[];this.rectangles=[];}
+  range(rect){return [Math.floor(rect.x/this.cellSize),Math.floor(rect.y/this.cellSize),Math.floor((rect.x+rect.width)/this.cellSize),Math.floor((rect.y+rect.height)/this.cellSize)];}
+  add(rect){
+    this.rectangles.push(rect);
+    const [left,top,right,bottom]=this.range(rect);
+    if((right-left+1)*(bottom-top+1)>256){this.large.push(rect);return;}
+    for(let x=left;x<=right;x++)for(let y=top;y<=bottom;y++){
+      const key=`${x},${y}`,bucket=this.cells.get(key);if(bucket)bucket.push(rect);else this.cells.set(key,[rect]);
+    }
+  }
+  overlaps(rect){
+    const [left,top,right,bottom]=this.range(rect);
+    if((right-left+1)*(bottom-top+1)>256)return this.rectangles.some(other=>overlaps(rect,other));
+    if(this.large.some(other=>overlaps(rect,other)))return true;
+    for(let x=left;x<=right;x++)for(let y=top;y<=bottom;y++){
+      const bucket=this.cells.get(`${x},${y}`);if(bucket?.some(other=>overlaps(rect,other)))return true;
+    }
+    return false;
+  }
+}
+
 /** Place footprints near an origin, accounting for large tokens and occupied spaces. */
 export function planPlacement(tokens, {origin,bounds,gridSize=100,occupied=[],snap=p=>p}) {
-  const taken=occupied.map(r=>({...r}));
+  const taken=new Occupancy(gridSize*4);for(const rect of occupied)taken.add(rect);
   const placed=[];
   for(const token of tokens) {
     const width=Math.max(0.25,Number(token.width)||1)*gridSize;
@@ -24,12 +48,12 @@ export function planPlacement(tokens, {origin,bounds,gridSize=100,occupied=[],sn
         const point=snap({x:origin.x+dx*gridSize,y:origin.y+dy*gridSize},token);
         const rect={x:point.x,y:point.y,width,height};
         if(rect.x<bounds.x || rect.y<bounds.y || rect.x+width>bounds.x+bounds.width || rect.y+height>bounds.y+bounds.height) continue;
-        if(taken.some(r=>overlaps(rect,r))) continue;
+        if(taken.overlaps(rect)) continue;
         found=rect;break;
       }
     }
     if(!found) throw new Error("There is not enough free space near that point. Choose a larger open area or deploy fewer monsters.");
-    taken.push(found);placed.push({...token,x:found.x,y:found.y});
+    taken.add(found);placed.push({...token,x:found.x,y:found.y});
   }
   return placed;
 }
@@ -104,10 +128,11 @@ export async function deployEncounter(lines, {origin=null,hidden=true,addToComba
     const bounds={x:rect.x,y:rect.y,width:rect.width,height:rect.height};
     const center=origin ?? canvas.canvasCoordinatesFromClient({x:window.innerWidth/2,y:window.innerHeight/2});
     const near={x:Math.max(bounds.x,Math.min(center.x,bounds.x+bounds.width-size)),y:Math.max(bounds.y,Math.min(center.y,bounds.y+bounds.height-size))};
+    const documents=new Map(drafts.map(d=>[d.data,d.document]));
     const placed=planPlacement(drafts.map(d=>d.data),{
       origin:near,bounds,gridSize:size,
       occupied:[...scene.tokens].map(t=>({x:t.x,y:t.y,width:t.width*size,height:t.height*size})),
-      snap:(point,data)=>drafts.find(d=>d.data===data)?.document.getSnappedPosition(point) ?? point
+      snap:(point,data)=>documents.get(data)?.getSnappedPosition(point) ?? point
     });
     if(!canvas.ready || canvas.scene.id!==scene.id) throw new Error("The viewed scene changed. Deploy again on the intended scene.");
     created=await scene.createEmbeddedDocuments("Token",placed);

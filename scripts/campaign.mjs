@@ -35,7 +35,7 @@ export function installCampaignFeatures(Controller){
     activeWave:{get(){this.waves??=[newWave()];return this.waves.find(w=>w.id===this.activeWaveId)??this.waves[0];}},
     lines:{get(){return this.activeWave.lines;},set(value){this.activeWave.lines=value;}},
     allLines:{get(){return flattenWaves(this.waves);}},
-    totalMonsterCount:{get(){return this.allLines.reduce((n,l)=>n+l.quantity,0);}}
+    totalMonsterCount:{get(){return this.waves.reduce((n,w)=>n+w.lines.reduce((sum,l)=>sum+l.quantity,0),0);}}
   });
   Object.assign(Controller.prototype,{
     initCampaign(){
@@ -50,10 +50,10 @@ export function installCampaignFeatures(Controller){
     resetEncounter(){this.waves=[newWave()];this.activeWaveId=this.waves[0].id;this.meta={tags:[],folder:"",notes:""};this.loadedId=null;this.loadedName="";this.draftKey=crypto.randomUUID();},
     encounterSnapshot(){return normalizeEncounter({schema:2,waves:this.waves,activeWaveId:this.activeWave.id,party:this.party,rules:this.rules,...this.meta});},
     recommendationKey(){return JSON.stringify({party:this.party.map(p=>[p.uuid,p.level,p.readiness]),rules:this.rules,filters:this.filters,count:this.catalog.monsters.length});},
-    campaignView(){
-      const entries=this.entries,visible=filterVault(entries,this.vault);
-      return {waveMarkup:waveControlsHTML(this.waves,this.activeWave.id,this.totalMonsterCount),waveCount:this.waves.length,totalMonsterCount:this.totalMonsterCount,
-        vaultMarkup:this.tab==="vault"?vaultWorkspaceHTML(entries,visible,vaultFolders(),this.vault):"",
+    campaignView(entries){
+      const totalMonsterCount=this.totalMonsterCount;
+      return {waveMarkup:this.tab==="forge"?waveControlsHTML(this.waves,this.activeWave.id,totalMonsterCount):"",waveCount:this.waves.length,totalMonsterCount,
+        vaultMarkup:this.tab==="vault"?vaultWorkspaceHTML(entries,filterVault(entries,this.vault),vaultFolders(),this.vault):"",
         recommendedMarkup:this.tab==="recommended"?recommendationsHTML(this.suggestions,this.recommendedSaved,{busy:this.recommendationBusy,error:this.recommendationError,settings:this.recommendationSettings,rules:this.rules,hasParty:this.party.length>0,stale:this.suggestions.length&&this.recommendationSignature!==this.recommendationKey(),saved:this.savedSuggestions}):""};
     },
     handleCampaignInput(input){

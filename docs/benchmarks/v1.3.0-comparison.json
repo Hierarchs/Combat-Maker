@@ -1,0 +1,119 @@
+{
+  "date": "2026-10-25",
+  "platform": "Windows, Node 24.18.0, installed headless Chrome",
+  "baselineVersion": "1.2.1",
+  "baselineCommit": "e392d84",
+  "optimizedVersion": "1.3.0",
+  "before": {
+    "engine": {
+      "node": "v24.18.0",
+      "catalogue": 10000,
+      "vault": 500,
+      "settings": 4,
+      "cases": [
+        {
+          "name": "catalogue summaries: 10,000 NPCs, 10 reads",
+          "medianMs": 55.708,
+          "p95Ms": 86.634
+        },
+        {
+          "name": "warm Vault: 500 encounters, 10 reads",
+          "medianMs": 402.814,
+          "p95Ms": 455.236
+        },
+        {
+          "name": "generator: 10,000 NPCs, CR 9.3, 60 monsters / 4 species",
+          "medianMs": 3.821,
+          "p95Ms": 4.711
+        },
+        {
+          "name": "generator: unreachable CR 20, 10,000 CR 1/8 NPCs, 60 monsters / 4 species",
+          "medianMs": 135.71,
+          "p95Ms": 169.549
+        },
+        {
+          "name": "placement: 100 tokens, 900 occupied footprints",
+          "medianMs": 48.832,
+          "p95Ms": 66.651
+        }
+      ]
+    },
+    "browser": {
+      "catalogue": 10026,
+      "vault": 500,
+      "cases": [
+        {
+          "tab": "forge",
+          "medianMs": 23.7,
+          "p95Ms": 28.4
+        },
+        {
+          "tab": "vault",
+          "medianMs": 19.7,
+          "p95Ms": 24.9
+        },
+        {
+          "tab": "health",
+          "medianMs": 19.3,
+          "p95Ms": 23.1
+        }
+      ]
+    }
+  },
+  "after": {
+    "engine": {
+      "node": "v24.18.0",
+      "catalogue": 10000,
+      "vault": 500,
+      "settings": 4,
+      "cases": [
+        {
+          "name": "catalogue summaries: 10,000 NPCs, 10 reads",
+          "medianMs": 0.001,
+          "p95Ms": 0.005
+        },
+        {
+          "name": "warm Vault: 500 encounters, 10 reads",
+          "medianMs": 0.243,
+          "p95Ms": 3.312
+        },
+        {
+          "name": "generator: 10,000 NPCs, CR 9.3, 60 monsters / 4 species",
+          "medianMs": 3.998,
+          "p95Ms": 5.408
+        },
+        {
+          "name": "generator: unreachable CR 20, 10,000 CR 1/8 NPCs, 60 monsters / 4 species",
+          "medianMs": 2.228,
+          "p95Ms": 2.882
+        },
+        {
+          "name": "placement: 100 tokens, 900 occupied footprints",
+          "medianMs": 9.716,
+          "p95Ms": 18.456
+        }
+      ]
+    },
+    "browser": {
+      "catalogue": 10026,
+      "vault": 500,
+      "cases": [
+        {
+          "tab": "forge",
+          "medianMs": 1.2,
+          "p95Ms": 2
+        },
+        {
+          "tab": "vault",
+          "medianMs": 4.3,
+          "p95Ms": 5.2
+        },
+        {
+          "tab": "health",
+          "medianMs": 1.3,
+          "p95Ms": 2.4
+        }
+      ]
+    }
+  }
+}

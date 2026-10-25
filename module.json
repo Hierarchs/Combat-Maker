@@ -2,7 +2,7 @@
   "id": "combat-maker",
   "title": "Combat Forge",
   "description": "Build, balance, save, generate, and deploy D&D 5e encounters from your installed Actor compendiums.",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "authors": [{ "name": "Hierarchs", "url": "https://github.com/Hierarchs" }],
   "compatibility": { "minimum": "14", "verified": "14", "maximum": "14" },
   "relationships": { "systems": [{ "id": "dnd5e", "type": "system" }] },
@@ -10,7 +10,7 @@
   "styles": ["styles/combat-forge.css", "styles/oblivion.css", "styles/campaign.css"],
   "url": "https://github.com/Hierarchs/Combat-Maker",
   "manifest": "https://github.com/Hierarchs/Combat-Maker/releases/latest/download/module.json",
-  "download": "https://github.com/Hierarchs/Combat-Maker/releases/download/v1.2.1/combat-maker.zip",
+  "download": "https://github.com/Hierarchs/Combat-Maker/releases/download/v1.3.0/combat-maker.zip",
   "license": "LICENSE",
   "readme": "README.md",
   "bugs": "https://github.com/Hierarchs/Combat-Maker/issues"

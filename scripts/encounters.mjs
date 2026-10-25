@@ -44,7 +44,8 @@ export function flattenWaves(waves){
 export function summarizeWaves(waves,party,rules){
   const reports=waves.map(w=>({id:w.id,name:w.name,...assessEncounter(w.lines,party,rules)}));
   const peak=[...reports].sort((a,b)=>(b.shown.rank??-1)-(a.shown.rank??-1)||b.adjustedXP-a.adjustedXP)[0]??assessEncounter([],party,rules);
-  return {...peak,...encounterTotals(flattenWaves(waves)),waveCount:waves.length,peakWave:peak.name||"Opening force",waves:reports};
+  const totals=reports.reduce((t,r)=>({count:t.count+r.count,xp:t.xp+r.xp,cr:t.cr+r.cr}),{count:0,xp:0,cr:0});
+  return {...peak,...totals,waveCount:waves.length,peakWave:peak.name||"Opening force",waves:reports};
 }
 
 function cleanParty(party){
@@ -84,8 +85,11 @@ export function normalizeEncounter(data){
 export function filterVault(entries,{search="",folder="*",tag="",sort="recent"}={}){
   const terms=search.toLowerCase().trim().split(/\s+/).filter(Boolean);
   return entries.filter(entry=>{
-    const data=entry.data,haystack=[entry.name,data.notes,data.folder,...data.tags,...data.waves.flatMap(w=>[w.name,w.trigger,w.notes,...w.lines.map(l=>l.monster.name)])].join(" ").toLowerCase();
-    return (folder==="*"||data.folder===folder)&&(!tag||data.tags.some(t=>t.toLowerCase()===tag.toLowerCase()))&&terms.every(term=>haystack.includes(term));
+    const data=entry.data;
+    if(folder!=="*"&&data.folder!==folder||tag&&!data.tags.some(t=>t.toLowerCase()===tag.toLowerCase()))return false;
+    if(!terms.length)return true;
+    const haystack=[entry.name,data.notes,data.folder,...data.tags,...data.waves.flatMap(w=>[w.name,w.trigger,w.notes,...w.lines.map(l=>l.monster.name)])].join(" ").toLowerCase();
+    return terms.every(term=>haystack.includes(term));
   }).sort((a,b)=>sort==="name"?a.name.localeCompare(b.name):sort==="xp"?b.data.report.xp-a.data.report.xp:b.data.updatedAt-a.data.updatedAt);
 }
 

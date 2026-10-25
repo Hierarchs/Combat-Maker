@@ -7,6 +7,8 @@ import { deployEncounter } from "./deploy.mjs";
 import { EMPTY_REPAIRS } from "./repairs.mjs";
 import { recommendEncounters } from "./recommendations.mjs";
 import { normalizeEncounter } from "./encounters.mjs";
+import { invalidateVaultEntry } from "./vault.mjs";
+import { catalogueMetadataChanged, affectsParty, tokenResourcesChanged } from "./events.mjs";
 
 let app;
 export function openForge() {
@@ -55,20 +57,27 @@ Hooks.on("renderActorDirectory",(directory,element)=> {
 });
 
 let partyTimer,sourceTimer;
-const updateParty=()=> {
+const updateParty=document=> {
+  if(!app?.rendered||!affectsParty(document,app.controller.partyUuids))return;
   clearTimeout(partyTimer);partyTimer=setTimeout(()=>app?.rendered&&app.controller.refreshParty().catch(error=>app.controller.error(error)),100);
 };
-for(const hook of ["updateActor","createItem","updateItem","deleteItem","createActiveEffect","updateActiveEffect","deleteActiveEffect","updateToken","deleteToken"])Hooks.on(hook,updateParty);
+for(const hook of ["updateActor","createItem","updateItem","deleteItem","createActiveEffect","updateActiveEffect","deleteActiveEffect","deleteToken"])Hooks.on(hook,updateParty);
+Hooks.on("updateToken",(token,changes)=>{if(tokenResourcesChanged(changes))updateParty(token);});
 Hooks.on("deleteActor",updateParty);
 const updateSources=()=> {
   clearTimeout(sourceTimer);sourceTimer=setTimeout(()=> {
     if(app?.rendered)app.controller.refreshCatalog().catch(error=>app.controller.error(error));
   },600);
 };
-Hooks.on("updateCompendium",updateSources);
+Hooks.on("updateCompendium",pack=>{if(pack.documentName==="Actor")updateSources();});
 Hooks.on("createCompendium",updateSources);
 Hooks.on("deleteCompendium",updateSources);
-for(const hook of ["createActor","updateActor","deleteActor"])Hooks.on(hook,actor=>{if(actor.type==="npc")updateSources();});
+for(const hook of ["createActor","deleteActor"])Hooks.on(hook,actor=>{if(actor.type==="npc")updateSources();});
+Hooks.on("updateActor",(actor,changes)=>{if((actor.type==="npc"||Object.hasOwn(changes??{},"type"))&&catalogueMetadataChanged(changes))updateSources();});
 for(const hook of ["createJournalEntry","updateJournalEntry","deleteJournalEntry"])Hooks.on(hook,journal=> {
-  if(journal.getFlag(ID,"encounter")&&app?.rendered)app.controller.paint();
+  const wasCached=invalidateVaultEntry(journal);
+  if((wasCached||journal.getFlag(ID,"encounter"))&&app?.rendered)app.controller.paint();
+});
+for(const hook of ["createFolder","updateFolder","deleteFolder"])Hooks.on(hook,folder=>{
+  if(folder.type==="JournalEntry"&&app?.rendered)app.controller.paint();
 });

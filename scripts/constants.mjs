@@ -28,6 +28,8 @@ export const INDEX_FIELDS = ["type", "system.details.cr", "system.details.type",
   "system.source", "system.traits.size", "system.resources.legact.max", "system.resources.legres.max", `flags.${ID}`];
 export const clamp = (v,min,max) => Math.min(max,Math.max(min,v));
 export const number = (v,fallback=0) => v !== null && v !== "" && Number.isFinite(Number(v)) ? Number(v) : fallback;
-export const formatNumber = v => new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(v ?? 0);
-export const formatCR = cr => new Map([[0.125,"1/8"],[0.25,"1/4"],[0.5,"1/2"]]).get(cr) ?? String(cr);
+const numberFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+const fractions = new Map([[0.125,"1/8"],[0.25,"1/4"],[0.5,"1/2"]]);
+export const formatNumber = v => numberFormat.format(v ?? 0);
+export const formatCR = cr => fractions.get(cr) ?? String(cr);
 export const titleCase = v => String(v ?? "").replace(/(^|[\s-])\S/g,c=>c.toUpperCase());
