@@ -69,6 +69,16 @@ test("a failed import rolls back created encounters and validates the whole batc
   await assert.rejects(importVault([{name:"A",data:legacy()},{name:"B",data:legacy()}]),/rolled back/);assert.equal(game.journal.size,0);
   calls=0;await assert.rejects(importVault([{name:"A",data:legacy()},{name:"B",data:{schema:999}}]),/Unsupported/);assert.equal(calls,0);
 });
+test("a canceled journal creation cannot be reported as a successful import",async()=>{
+  installFoundry();const create=JournalEntry.create;let calls=0;JournalEntry.create=async data=>++calls===2?undefined:create(data);
+  await assert.rejects(importVault([{name:"A",data:legacy()},{name:"B",data:legacy()}]),/rolled back/);assert.equal(game.journal.size,0);
+  installFoundry();const next=JournalEntry.create;calls=0;JournalEntry.create=async data=>{if(++calls===2)return undefined;const journal=await next(data);journal.delete=async()=>undefined;return journal;};
+  await assert.rejects(importVault([{name:"A",data:legacy()},{name:"B",data:legacy()}]),/could not be removed/);assert.equal(game.journal.size,1);
+});
+test("a canceled move keeps the folder and its encounters rather than deleting its contents",async()=>{
+  installFoundry();const saved=await saveEncounter("Keep me",sequence()),folder=vaultFolders()[0];saved.update=async()=>undefined;
+  await assert.rejects(deleteVaultFolder(folder.id),/folder was kept/);assert.equal(game.journal.size,1);assert.ok(game.folders.has(folder.id));assert.equal(saved.folder,folder.id);
+});
 test("waves deploy separately into an existing combat, roll only the new group, and preserve existing initiative",async()=>{
   const a=npc("a","Guard",1),b=npc("b","Support",2);installFoundry({actors:[a,b]});
   const combat=await Combat.create({scene:"scene1",active:true});const old=await combat.createEmbeddedDocuments("Combatant",[{actorId:"pc",initiative:19}]);
