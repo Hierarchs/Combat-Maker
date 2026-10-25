@@ -4,10 +4,12 @@ A Foundry Virtual Tabletop **V14** encounter builder for the **D&D5e** game syst
 
 ![The Forge, shown with mock-world development data](docs/screenshots/forge.png)
 
-<details><summary>Generator and Vault previews</summary>
+<details><summary>Generator, Vault, and Ledger previews</summary>
 
 ![Encounter generator](docs/screenshots/generator.png)
 ![Saved encounters in the Vault](docs/screenshots/vault.png)
+![Compendium diagnostics in the Bestiary Ledger](docs/screenshots/ledger.png)
+![Correcting metadata without editing the source pack](docs/screenshots/metadata-repair.png)
 
 </details>
 
@@ -27,10 +29,10 @@ For a manual installation, download `combat-maker.zip` from [Releases](https://g
 
 ## The Forge
 
-The dark workspace follows the supplied reference layout: party at upper left, encounter and difficulty below, and a searchable monster browser on the right. Orange controls highlight the active view and deployment action.
+The workspace uses an original parchment-and-ink theme inspired by the classic Oblivion menus: serif type, fine gold borders, engraved controls, and warm paper panels. The layout keeps your party at upper left, encounter and difficulty below, and a searchable monster browser on the right. The Forge, Vault, Ledger, and dialogs share the theme. All textures and ornaments are original SVG/CSS artwork; no game assets or external fonts are required.
 
 1. **Choose a party.** Use the person button or drag character Actors or character tokens into the window. Assigned player characters populate the initial party automatically. Health and resource estimates update when actors, items, effects, or tokens change.
-2. **Choose sources.** The books button discovers installed Actor compendiums automatically, or lets you check individual packs, including world and homebrew compendiums. World NPCs are included by default. Indexes load two packs at a time; full actors are fetched only when opening sheets, loading uncatalogued saved sources, dropping actors, or deploying.
+2. **Choose sources.** The books button discovers installed Actor compendiums automatically, or lets you check individual packs, including world and homebrew compendiums. World NPCs are included by default. Indexes load two packs at a time. Full actors are fetched for sheets, uncatalogued encounter sources, drops, deployment, and the Ledger's reference scan; scanning references loads only the actors used by encounters or extra dropped references.
 3. **Find monsters.** Search names and books; filter by type, size, book, edition, alignment, environment, legendary status, and fractional CR. Sort columns and page through large catalogues. The eye opens a creature's sheet. Click a row, or focus it and press Enter/Space, to add it. Press `/` inside the window to search.
 4. **Build or generate.** Adjust quantities directly or with +/−. The generator targets either party difficulty or **combined CR**, respects bestiary filters, and caps both total monsters and distinct stat blocks. It reports when only a closest match is available. Generation replaces the current draft's monster list.
 5. **Read the rating.** Compare the rested party's **Full** rating with the live **Now** estimate. Click the difficulty panel to see all budgets and the calculation.
@@ -38,9 +40,9 @@ The dark workspace follows the supplied reference layout: party at upper left, e
 
 ### Homebrew and compendium support
 
-Any accessible **D&D5e Actor compendium** can be a source, regardless of its publisher or whether it belongs to a world, module, or system. No integrations with individual publishers are required. Only `npc` Actors with valid CR values (0, 1/8, 1/4, 1/2, and integers 1–30) become monster entries. Characters and vehicles are skipped. Missing or invalid CRs are counted in the source dialog; failures in one pack do not prevent other packs from loading.
+Any accessible **D&D5e Actor compendium** can be a source, regardless of its publisher or whether it belongs to a world, module, or system. No integrations with individual publishers are required. Only `npc` Actors with valid CR values (0, 1/8, 1/4, 1/2, and integers 1–30) become usable monster entries. Characters and vehicles are skipped. NPCs with missing or invalid CRs remain available for repair in the Ledger. Failures in one pack do not prevent other packs from loading.
 
-Drop an NPC into the monster list to retain its UUID even when its pack is not selected. Dropping into the encounter panel also adds it to the encounter. The module does not modify your compendium. Use **Forget manually dropped actor references** in Sources to clear these extra references.
+Drop an NPC into the monster list to retain its UUID even when its pack is not selected. Dropping a valid NPC into the encounter panel also adds it to the encounter. An invalid CR opens its metadata repair form. The module does not modify your compendium. Use **Forget manually dropped actor references** in Sources to clear these extra references.
 
 Metadata is read from current and legacy D&D5e fields:
 
@@ -58,6 +60,18 @@ Metadata is read from current and legacy D&D5e fields:
 Unknown metadata stays unknown. The module cannot infer a monster's environment or edition reliably when the source does not supply it. Source authors can optionally override book, edition, and environments with `flags.combat-maker.book`, `flags.combat-maker.edition`, and `flags.combat-maker.environments`. Existing monster documents remain editable through their normal actor sheets.
 
 The package supports D&D5e's data model; other game systems' Actor packs require a separate adapter and are not supported.
+
+## The Bestiary Ledger
+
+Open **The Ledger** to examine catalogue health and repair incomplete entries. Use the quill beside any creature in the Forge to open the same metadata editor directly.
+
+- **Metadata:** Lists the exact NPCs with missing/invalid CR, missing book, unknown edition, or missing environment. Filter by issue, source, name, or saved corrections. A pack's label can still be displayed as a fallback, while the Ledger identifies that an explicit book is missing. Invalid NPCs remain in this report even when they cannot appear in the monster browser.
+- **Corrections:** Amend CR, book, edition, environments, creature type, and size. Corrections persist in this world's `combat-maker.catalogRepairs` setting and apply to browsing, filters, encounter loading, and balance calculations. Changing CR recalculates builder XP from the CR table. Unchanged CR preserves any explicit source XP. Blank optional fields use source values; **Reset to source metadata** removes all local corrections for that entry, including its hidden preference.
+- **Duplicates:** Identifies possible copies with matching name, CR, edition, creature type, and size. Full stat blocks may still differ. Nothing is merged automatically. **Prefer this copy** keeps one visible and hides the others from browsing and generation; the Hidden section can restore any copy. Existing encounters can still load and deploy hidden source actors. Different editions and CRs stay separate.
+- **References:** Checks monster UUIDs used by Vault encounters, the current draft, dropped actors, and saved replacement mappings. Missing sources and actors requiring CR repair are shown with their affected encounters. Available actors in unselected packs are checked without enabling the whole pack.
+- **Replacement actors:** Search for an available NPC and explicitly map the missing UUID to it. The mapping applies across Combat Forge in this world, including direct deployment from old Vault entries. It does not rewrite source packs or existing Vault journals. Loading refreshes the creature's metadata; re-saving that encounter stores the new UUID and recalculated rating. If an original source returns later, its browser entry remains suppressed while its replacement mapping is active, so selecting a displayed creature always uses that creature. Remove the mapping under References to restore the original. Mappings can be changed or removed, and cyclic mappings are rejected.
+
+Corrections change catalogue metadata, not the source stat block. Deployment continues to use the actual actor's abilities and statistics. Duplicate suppression is also confined to Combat Forge; it never deletes actors or compendium entries. Normal Foundry world backups include corrections and replacement settings. v1.0 Vault journals and drafts remain compatible with v1.1.
 
 ## Difficulty rules
 
@@ -117,7 +131,7 @@ npm run preview
 # Open http://127.0.0.1:4314
 ```
 
-Automated coverage includes official rules examples and boundaries, dynamic readiness, legacy/current metadata, filtering, constrained generation, source failures, homebrew, independent Vault saves, deployment and rollback, browser interactions, and compact layout. Browser fixtures exercise the actual controller and views using a mock adapter. **A live Foundry V14/D&D5e world smoke test is still required for runtime certification.** See [docs/TESTING.md](docs/TESTING.md).
+Automated coverage includes official rules examples and boundaries, dynamic readiness, legacy/current metadata, filtering, constrained generation, source failures, homebrew, independent Vault saves, deployment and rollback, metadata repair/reset and source immutability, duplicate preference/restore, missing-reference resolution and cycle rejection, large duplicate scans, browser interactions, and compact Forge/Ledger layouts. Browser fixtures exercise the actual controller and views using a mock adapter. **A live Foundry V14/D&D5e world smoke test is still required for runtime certification.** See [docs/TESTING.md](docs/TESTING.md).
 
 The package uses V14 `ApplicationV2`, the current scene-control record format, namespaced document APIs, UUIDs, compendium indexes, and token snapping. It does not embed the VTT or system runtime. The production ZIP excludes tests, development fixtures, dependencies, and development servers.
 

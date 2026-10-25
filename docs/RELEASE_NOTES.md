@@ -1,10 +1,11 @@
-Combat Forge's first release: a Foundry VTT 14 encounter builder for D&D5e.
+Combat Forge v1.1.0 — the Bestiary Ledger and an Oblivion-inspired parchment interface.
 
-- Forge workspace with automatic Actor compendium discovery, live party state, monster filters, homebrew drops, and constrained encounter generation.
-- Official 2014/2024 difficulty math, optional party-resource estimates, and a documented swarm house rule.
-- Journal-backed Vault with inspection, loading, editing, copies, and deployment.
-- Scene deployment with hidden tokens, point selection, size-aware placement, optional combat creation, source reuse, and failure cleanup.
-- Automated rules, adapter, and browser tests. Live Foundry V14 world smoke testing remains pending.
+- New Bestiary Ledger identifies individual NPCs with missing CR, book, edition, or environments, including creatures that cannot yet be listed in the browser.
+- Edit metadata from the Ledger or the browser's quill. Corrections are stored in module world settings; source packs and actors remain untouched. Reset to source metadata at any time.
+- Review possible duplicates, choose a preferred copy, and restore hidden entries. Different editions and CRs stay separate, and no actors are deleted.
+- Scan saved encounters and dropped references for missing actors. Explicit replacement mappings work when loading encounters and deploying old Vault entries. Cycles are rejected.
+- New parchment panels, sepia serif typography, fine gold borders, and engraved controls throughout the Forge, Vault, Ledger, and dialogs. Uses original SVG/CSS artwork with no game assets or external fonts.
+- Keeps existing v1.0 encounters and settings. 37 automated engine/integration tests plus browser workflow checks; live Foundry V14 world smoke testing remains pending.
 
 Install through Foundry using:
 

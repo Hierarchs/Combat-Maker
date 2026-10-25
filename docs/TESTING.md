@@ -18,5 +18,9 @@ Run `npm run check`, `npm test`, `npm run test:browser`, and `npm run build`. Br
 8. Deploy hidden and visible tokens near the view center and a clicked point, with and without combat. Test Small, Large, Huge, and wildcard tokens on square, hex, and gridless scenes. Check token footprints, prototype appearance, unlinked health, combat membership, and reused imports.
 9. Test Escape cancellation of point selection, missing source actors, a full scene, and scene switching during deployment. Confirm errors do not leave partial deployments; inspect rollback notifications if a server operation is rejected.
 10. Resize to a compact window around 1060×610 and verify party/monster scrolling, filters, generator, Vault details, and deployment controls remain usable. Test a different Foundry theme and normal module combinations.
+11. Open the Ledger with a locked compendium containing invalid CRs, unknown editions, missing source books, and missing habitats. Repair each field; verify filtering and XP change while source documents and pack locks remain unchanged. Reload to verify persistence, then reset to source metadata.
+12. Review duplicate candidates across packs and editions. Prefer one copy and restore it through Hidden; verify no source actors are removed and existing encounters still resolve hidden copies.
+13. Remove a source used by a saved encounter. Scan references, explicitly map it to another NPC, then load and deploy the old encounter directly from the Vault. Remove the mapping and verify it becomes broken again. Test unavailable replacement targets and a rejected mapping loop.
+14. Check the parchment theme in all three views and dialogs, including keyboard focus, errors, scrollbars, compact Ledger tables, and the native Foundry window frame.
 
 Review dynamic/swarm estimates with your table; these modes intentionally use documented house formulas rather than claiming to be official balance rules.

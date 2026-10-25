@@ -1,4 +1,5 @@
 import { ID, MAX_MONSTERS } from "./constants.mjs";
+import { resolveReplacement, repairState } from "./repairs.mjs";
 
 const overlaps = (a,b) => a.x < b.x+b.width-1 && a.x+a.width > b.x+1 && a.y < b.y+b.height-1 && a.y+a.height > b.y+1;
 
@@ -70,8 +71,9 @@ export async function deployEncounter(lines, {origin=null,hidden=true,addToComba
   try {
     // Resolve everything before creating anything. A missing source cannot partially deploy a fight.
     const sources=[];
+    const replacements=repairState().replacements;
     for(const line of lines) {
-      const actor=await foundry.utils.fromUuid(line.monster.uuid);
+      const actor=await foundry.utils.fromUuid(resolveReplacement(line.monster.uuid,replacements));
       if(!actor || actor.documentName!=="Actor" || actor.type!=="npc") throw new Error(`Cannot find ${line.monster.name}. Re-enable its compendium or replace it in the Forge.`);
       sources.push({line,actor});
     }

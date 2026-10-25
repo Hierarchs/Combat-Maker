@@ -1,0 +1,299 @@
+/* Original parchment and ink artwork. Inspired by classic fantasy journal menus. */
+.combat-forge-window {background:#d7c8a9;border:4px double #947b51;border-radius:2px;box-shadow:0 18px 75px #130c07bb,inset 0 0 0 1px #f5ead0}
+.combat-forge-window .window-header {background:linear-gradient(#e3d6bb,#cebc98);border-bottom:3px double #9a825a;color:#493c28;font-family:"Palatino Linotype","Book Antiqua",Georgia,serif;text-shadow:0 1px #f6ecd6}
+.combat-forge-window .window-header .window-title {font-family:inherit;font-weight:400;letter-spacing:1px}
+.combat-forge-window .window-header button {color:#58472e}
+.combat-forge-window .window-content {background:#d9cbae;color:#3d3324}
+.cf-root {--cf-bg:#e0d3b8;--cf-panel:#d4c4a2;--cf-row:#ddd0b2;--cf-border:#b39a6d;--cf-quiet:#74674e;--cf-text:#403525;--cf-orange:#79572b;--cf-green:#3c6242;--cf-yellow:#856326;--cf-red:#9b392c;--cf-blue:#37576a;color-scheme:light;background-color:var(--cf-bg);background-image:url("../assets/parchment.svg"),radial-gradient(ellipse at 40% 15%,#f2e8d0a3,transparent 75%);font:13px/1.45 "Palatino Linotype","Book Antiqua",Georgia,serif;color:var(--cf-text)}
+.cf-root h2,.cf-root h3 {font-family:"Palatino Linotype","Book Antiqua",Georgia,serif;font-weight:400}
+.cf-root button {background:linear-gradient(#ece1c7a8,#cbb89142);border:1px solid #b39a6d;border-radius:1px;color:#5b4629;text-shadow:0 1px #fff5df66;transition:background .15s,color .15s,border-color .15s;font-family:inherit}
+.cf-root button:hover {background:linear-gradient(#f6ecd4,#d7c397);border-color:#8b6c3d;color:#4b3218}
+.cf-root button:focus-visible,.cf-root input:focus-visible,.cf-root select:focus-visible,.cf-root tr:focus-visible {outline-color:#7a4d26;outline-offset:2px}
+.cf-root button.cf-primary {background:linear-gradient(#8a6a3a,#66471f);color:#fff0cc;border:3px double #c2a371;box-shadow:inset 0 0 0 1px #62451f;text-shadow:0 1px 2px #2d1d0c;font-weight:400;font-variant:small-caps;letter-spacing:.7px}
+.cf-root button.cf-primary:hover {background:linear-gradient(#9f7a42,#775328);border-color:#e0c59c;color:#fff5df}
+.cf-root input,.cf-root select {background:#eee3c9a3;border-color:#af9568;border-radius:1px;color:#493b28;box-shadow:inset 0 1px 3px #634b2721;font-family:inherit;color-scheme:light}
+.cf-root input::placeholder {color:#87765a;font-style:italic}
+.cf-root input:focus,.cf-root select:focus {border-color:#79572b;background-color:#f2e7cf}
+.cf-root input[type="checkbox"] {accent-color:#79572b;box-shadow:none}
+.cf-root select option {color:#443623;background:#ede0c3}
+.cf-root kbd {background:#d7c6a3;color:#6a5739;border-color:#ae9364;border-radius:1px}
+.cf-root .cf-portrait {background:#ae9671;border:1px solid #91764f;border-radius:1px;filter:sepia(.24) saturate(.72);box-shadow:0 1px 3px #4e381c26}
+.cf-root .cf-image-button {background:none;border:0;box-shadow:none}
+.cf-root .cf-tabs {position:relative;background:linear-gradient(#d5c5a2,#e5d8bb);border-bottom:3px double #a38a5c;padding:9px 16px 11px;min-height:55px;gap:10px;box-shadow:inset 0 -1px #f6ebd2}
+.cf-root .cf-tabs::after {content:"";position:absolute;bottom:2px;left:42%;right:11%;height:4px;background:linear-gradient(90deg,transparent,#95764555,transparent);pointer-events:none}
+.cf-root .cf-tabs button[role="tab"] {background:none;border:1px solid transparent;border-radius:0;font-family:"Palatino Linotype","Book Antiqua",Georgia,serif;font-variant:small-caps;font-size:17px;font-weight:400;letter-spacing:.5px;color:#766342;padding:5px 15px;text-shadow:0 1px #fbf0d9}
+.cf-root .cf-tabs button[role="tab"]>.cf-symbol {font-size:17px}
+.cf-root .cf-tabs button.cf-active {color:#6e3d22;border-color:#b49a6c;background:linear-gradient(90deg,#c7ad7b22,#f5eacf99,#c7ad7b22);box-shadow:inset 0 -2px #9d7a43,inset 0 1px #f5ead0}
+.cf-root .cf-tabs button.cf-active::before,.cf-root .cf-tabs button.cf-active::after {content:"";width:4px;height:4px;transform:rotate(45deg);background:#8c6736;flex:none}
+.cf-root .cf-tabs>.cf-icon-button {background:none;border:0;color:#7f6945}
+.cf-root .cf-tagline {font-style:italic;font-size:12px;color:#7a6847;letter-spacing:.2px}
+.cf-root .cf-vault-count {background:#c1ab81;color:#655035;border:1px solid #ab8d5b;border-radius:50%;font-family:Georgia,serif;font-size:10px}
+.cf-root .cf-sidebar {background-color:#d4c3a0;background-image:url("../assets/parchment.svg"),linear-gradient(90deg,#89724416,transparent 12%,transparent 94%,#7c653c17);border-right:3px double #a38b61}
+.cf-root .cf-section-header {padding-top:11px;position:relative}
+.cf-root .cf-section-header h2 {color:#594128;font-size:18px;font-weight:400;font-variant:small-caps;letter-spacing:.7px}
+.cf-root .cf-section-header h2>span {font-size:10px;font-weight:400;background:none;border:1px solid #b39b6d;color:#78613f;border-radius:50%;padding:0 4px}
+.cf-root .cf-section-header .cf-icon-button {color:#8b7350}
+.cf-root .cf-section-header button {background:none;border-color:#b39a6d;color:#6d5737;font-size:11px}
+.cf-root .cf-party {border-bottom:3px double #ae9365;flex:0 1 auto;max-height:48%}
+.cf-root .cf-party-row {border-bottom:1px solid #b9a37c85;min-height:67px;padding-top:6px;padding-bottom:6px}
+.cf-root .cf-party-info strong {color:#453622;font-size:14px;font-weight:400}
+.cf-root .cf-party-info {gap:1px;line-height:1.15}
+.cf-root .cf-party-info>span {color:#746044;font-size:11px}
+.cf-root .cf-party-info>span>b {font-size:10px;font-weight:400}
+.cf-root .cf-party-info small {font-size:10px;color:#76664a}
+.cf-root .cf-party-row>.cf-icon-button {background:none;border:0;color:#8e7751}
+.cf-root .cf-hp-track {height:4px;border:1px solid #9e8a61;border-radius:0;background:#bda984;margin-top:4px}
+.cf-root .cf-hp-track>span {background:linear-gradient(#936b49,#775032)}
+.cf-root .cf-hp-track>.cf-hp-low {background:linear-gradient(#a16147,#853f32)}
+.cf-root .cf-add-party {background:#cdbb9570;border-color:#ae9365;color:#685332;font-style:italic}
+.cf-root .cf-add-party>span {color:#84714e;font-style:normal}
+.cf-root .cf-encounter-row {border-color:#b9a37c85}
+.cf-root .cf-line-info strong {font-size:12px;color:#493823;font-weight:400}
+.cf-root .cf-line-info small {font-size:10px;color:#7b6745}
+.cf-root .cf-loaded {color:#7f6240;font-size:11px;font-style:italic}
+.cf-root .cf-loaded b {color:#843c24}
+.cf-root .cf-stepper .cf-icon-button {color:#6f5834;border-color:#b29a6e;background:#e0d0ae55}
+.cf-root .cf-stepper input {background:transparent;box-shadow:none;color:#4b3820;border-color:transparent;font-size:12px;font-weight:400}
+.cf-root .cf-encounter-row>.cf-icon-button {color:#89724e;background:none;border:0}
+.cf-root .cf-summary {background:linear-gradient(#cebd9844,#bda57855);border-top:3px double #a68a5b;box-shadow:inset 0 1px #eee1c1}
+.cf-root .cf-summary-stats {color:#705d3c;font-size:12px}
+.cf-root .cf-summary-stats strong {color:#47351e;font-weight:400;font-size:13px}
+.cf-root .cf-difficulty {background:#ede0bf66;border:3px double #a78b56;box-shadow:inset 0 0 12px #9c7c3b16;border-radius:0}
+.cf-root .cf-difficulty-top {color:#7d6740;font-size:10px;letter-spacing:.5px}
+.cf-root .cf-difficulty-top>.cf-symbol {color:#8a744c}
+.cf-root .cf-rating {font-size:12px;gap:6px}
+.cf-root .cf-rating b {font-size:13px;font-weight:600}
+.cf-root .cf-rating>span:first-child {color:#7e6946}
+.cf-root .cf-rating .cf-arrow {color:#917649}
+.cf-root .cf-difficulty>small {color:#7d6b49;font-size:10px}
+.cf-root .cf-budget-track {height:4px;border-radius:0;background:#b9a57f;border:1px solid #ad9468}
+.cf-root .cf-party-state {color:#79613d;font-size:11px}
+.cf-root .cf-party-state>.cf-symbol {color:#8f513b}
+.cf-root .cf-party-state>span {color:#806c47;font-size:10px}
+.cf-root .cf-warning {font-size:10px;color:#8c4a2f}
+.cf-root .cf-deploy {font-size:15px;min-height:38px;padding:7px}
+.cf-root .cf-browser {background-color:#e4d8bd;background-image:url("../assets/parchment.svg"),linear-gradient(90deg,#795a2414,transparent 8%,transparent 95%,#795a2410)}
+.cf-root .cf-toolbar {padding:12px 13px 10px;gap:7px}
+.cf-root .cf-search>input {background:#f0e5cc8c;color:#4d3d27;font-size:12px;height:33px;border-color:#b39a6c}
+.cf-root .cf-search>.cf-symbol {color:#8e774f}
+.cf-root .cf-search>kbd {color:#8d7851;background:#dfd0ae}
+.cf-root .cf-monster-count {color:#7e6948;font-size:11px}
+.cf-root .cf-toolbar .cf-icon-button {color:#795d35;background:#d6c39955}
+.cf-root .cf-generate-button {background:#e7d5af;border:1px solid #9d7f4b;color:#6e4c24;font-weight:400;letter-spacing:.5px;font-variant:small-caps;font-size:13px}
+.cf-root .cf-filters {border-bottom:3px double #b29a6c;padding-bottom:10px;gap:5px}
+.cf-root .cf-filters select {background:#e2d3b2c7;color:#665031;border-color:#b39a6c;font-size:11px;box-shadow:none;border-radius:0;max-width:120px}
+.cf-root .cf-cr-range {color:#7f6d4a}
+.cf-root .cf-cr-range input {background:#ecdfc3;color:#5d482c;font-size:11px;border-color:#bba276}
+.cf-root .cf-reset {color:#826b45;font-style:italic}
+.cf-root .cf-monster-table th {background:#d8c6a1 url("../assets/parchment.svg");color:#715a37;border-bottom:1px solid #a68b5b;padding-top:13px;padding-bottom:12px}
+.cf-root .cf-monster-table th>button {color:#7b6340;font-size:10px;letter-spacing:1px;font-weight:400;box-shadow:none;text-transform:uppercase}
+.cf-root .cf-monster-table th>button.cf-sorted {color:#854e25}
+.cf-root .cf-monster-table tbody tr:nth-child(odd) {background:#bfa57815}
+.cf-root .cf-monster-table tbody tr:nth-child(even) {background:#fff8e014}
+.cf-root .cf-monster-table tbody tr:hover {background:linear-gradient(90deg,#ba97534d,#d6b77c47,#ba975329);box-shadow:inset 3px 0 #927039}
+.cf-root .cf-monster-table td {border-color:#b7a17a77;color:#56452c;font-size:12px}
+.cf-root .cf-monster-name strong {font-size:14px;font-weight:400;color:#4a3721}
+.cf-root .cf-monster-name small {font-size:10px;color:#8a7450;font-style:italic}
+.cf-root .cf-monster-table .cf-cr {font-size:14px;font-weight:400;color:#5b4224}
+.cf-root .cf-monster-table .cf-numeric {font-weight:400;font-size:13px}
+.cf-root .cf-subtype {color:#8d7852}
+.cf-root .cf-legendary {color:#987331}
+.cf-root .cf-row-actions .cf-icon-button {color:#9c8256;background:none;border:0}
+.cf-root .cf-monster-table tr:hover .cf-row-actions .cf-icon-button {color:#704b24}
+.cf-root .cf-edition {background:#b8a17a33;color:#77613e;border:1px solid #b19a73;border-radius:1px;font-size:10px;font-weight:400;letter-spacing:.3px;padding:1px 6px}
+.cf-root .cf-edition-2014 {background:#5c7e8b16;color:#3f6271;border-color:#83939677}
+.cf-root .cf-edition-2024 {background:#51774e14;color:#3d6341;border-color:#83917577}
+.cf-root .cf-browser-footer {background:#cebc9777;border-top:3px double #b19868;color:#826d49;font-size:10px}
+.cf-root .cf-browser-footer .cf-icon-button {color:#7d6340;background:none}
+.cf-root .cf-empty {color:#8b7751}
+.cf-root .cf-empty>.cf-symbol {color:#a28a5c}
+.cf-root .cf-empty>strong {color:#75603d;font-size:13px;font-weight:400}
+.cf-root .cf-empty>span {color:#8d7957;font-size:11px}
+.cf-root .cf-catalog-empty p {color:#8a7654}
+.cf-root .cf-index-status,.cf-root .cf-index-warning {background:#d7ba7c55;border-color:#b99b61;color:#80562d;font-size:11px}
+.cf-root .cf-vault {background-color:#ded0b0;background-image:url("../assets/parchment.svg"),radial-gradient(ellipse at 50% 10%,#faf0d650,transparent 80%);padding:27px}
+.cf-root .cf-eyebrow {color:#936f39;font-size:10px;letter-spacing:2px;font-weight:400}
+.cf-root .cf-vault-header {position:relative;padding-bottom:24px;border-bottom:1px solid #ac9361;margin-bottom:24px}
+.cf-root .cf-vault-header::after {content:"";position:absolute;bottom:-12px;left:calc(50% - 110px);width:220px;height:22px;background:#ded0b0 url("../assets/ornament.svg") center no-repeat}
+.cf-root .cf-vault-header h2 {color:#634726;font-size:29px;font-weight:400;letter-spacing:.2px}
+.cf-root .cf-vault-header>span {color:#89724c;font-size:12px;font-style:italic}
+.cf-root .cf-vault-card {border:3px double #af9462;background:#e4d6b6a8;border-radius:1px;box-shadow:1px 3px 8px #644a2221}
+.cf-root .cf-vault-card header {background:#cdb68742;border-color:#b49a68}
+.cf-root .cf-card-title {color:#594022;font-size:16px;font-weight:400;background:none;box-shadow:none;letter-spacing:.1px}
+.cf-root .cf-vault-card .cf-icon-button {color:#8c7145;background:none;border:0}
+.cf-root .cf-card-monsters {background:none}
+.cf-root .cf-card-monsters:hover {background:#f2e5c24d}
+.cf-root .cf-card-monsters>span {font-size:13px;color:#5d482b}
+.cf-root .cf-card-monsters b {color:#98652e;font-weight:400}
+.cf-root .cf-card-monsters small {color:#85704c;font-size:10px}
+.cf-root .cf-vault-card dl {border-color:#c1aa7c;font-size:12px}
+.cf-root .cf-vault-card dt {color:#927a50}
+.cf-root .cf-vault-card dd {color:#5e482a;font-weight:400}
+.cf-root .cf-vault-card footer {border-color:#c1aa7c;color:#998054;font-size:10px}
+.cf-root .cf-vault-card footer button {color:#7a5b32;background:none;border:0;font-style:italic;font-size:11px}
+.cf-root .cf-vault-empty h2 {color:#7b603a;font-size:27px}
+.cf-root .cf-vault-empty p {color:#8c7752;font-size:13px}
+.cf-root .cf-dialog {border:4px double #967848;border-radius:1px;box-shadow:0 15px 90px #1c100b99,inset 0 0 0 1px #f3e6c7;background:#e3d4b1;color:#4b3922;color-scheme:light;font:13px/1.6 "Palatino Linotype","Book Antiqua",Georgia,serif}
+.cf-root .cf-dialog::backdrop {background:#20180fa1;backdrop-filter:blur(3px)}
+.cf-root .cf-dialog header {background:linear-gradient(#e2d1ac,#ccb88e);border-bottom:3px double #a18754;padding:12px 17px;box-shadow:inset 0 1px #f7e9ca}
+.cf-root .cf-dialog header h2 {color:#61431f;font-family:inherit;font-size:21px;font-weight:400;font-variant:small-caps;letter-spacing:.4px}
+.cf-root .cf-dialog-close {color:#886b3c;background:none;border:0}
+.cf-root .cf-dialog-body {background-color:#e3d5b6;background-image:url("../assets/parchment.svg"),radial-gradient(ellipse at 45% 20%,#fff7df66,transparent 80%);padding:20px;gap:15px}
+.cf-root .cf-dialog-body>p {font-size:13px;color:#78613f;line-height:1.75}
+.cf-root .cf-dialog-body>small {color:#89704a;font-size:11px}
+.cf-root .cf-dialog-body h3 {color:#745329;font-size:16px;letter-spacing:.2px;font-weight:400;text-transform:none}
+.cf-root .cf-dialog footer {background:#c9b38955;border-top:3px double #a78c59;padding:12px 20px}
+.cf-root .cf-dialog footer button {font-size:13px;min-height:34px}
+.cf-root .cf-dialog .cf-select-label>span,.cf-root .cf-dialog .cf-field {font-size:12px;font-weight:400;letter-spacing:.2px;color:#725735}
+.cf-root .cf-dialog select,.cf-root .cf-dialog input {background:#f2e6cc94;color:#564023;border-color:#b49a69;font-size:13px}
+.cf-root .cf-dialog select {height:34px}
+.cf-root .cf-field>small {color:#91774f;font-size:11px}
+.cf-root .cf-check {color:#715633;font-size:13px}
+.cf-root .cf-check small {color:#8a744f;font-size:11px}
+.cf-root .cf-callout {background:#c8ac711f;border:1px solid #baa06b;border-left:3px solid #9e7b3b;border-radius:0;color:#806440;font-size:12px}
+.cf-root .cf-callout b {color:#694822;font-weight:600}
+.cf-root .cf-dialog-error {background:#a4462b15;color:#8c3528;border-color:#bd8061;font-size:12px;border-radius:0}
+.cf-root .cf-source-list,.cf-root .cf-roster {border-color:#b39a68;border-radius:0}
+.cf-root .cf-source-list label,.cf-root .cf-roster label {background:#ccb68725;border-color:#bda47388;color:#5d4527}
+.cf-root .cf-source-list label strong,.cf-root .cf-roster label strong {font-size:14px;font-weight:400}
+.cf-root .cf-source-list label small,.cf-root .cf-roster label small {color:#8b734a;font-size:11px}
+.cf-root .cf-source-list label>.cf-symbol {color:#967445}
+.cf-root .cf-detail-stats {background:#cbb17b33;border-color:#b69a60;border-radius:0;padding:16px}
+.cf-root .cf-detail-stats small {color:#917447;font-size:9px}
+.cf-root .cf-detail-stats strong {font-size:22px;font-weight:400}
+.cf-root .cf-detail-monsters>div,.cf-root .cf-detail-party>div {color:#604727;border-color:#c0a779;font-size:14px}
+.cf-root .cf-detail-monsters b {color:#95632b}
+.cf-root .cf-detail-monsters small,.cf-root .cf-detail-party small {color:#8b7248;font-size:11px}
+.cf-root .cf-help-steps {color:#7a603d;font-size:13px}
+.cf-root .cf-help-steps b {color:#61431f}
+.cf-root .cf-explanation-table th,.cf-root .cf-explanation-table td {color:#715633;border-color:#bda271;font-size:12px}
+.cf-root .cf-explanation-table thead th {color:#684820;font-size:11px}
+.cf-root .cf-toast {background:#eddfbfee;color:#6b4b21;border:3px double #ab8a4c;border-radius:0;box-shadow:0 5px 20px #46301555;font:13px/1.5 Georgia,serif}
+.cf-root.cf-dragging::after {background:#eddfbbdd;border-color:#9a7335;color:#795329;font-family:Georgia,serif}
+.cf-root .cf-text-low {color:#42633b}
+.cf-root .cf-text-moderate {color:#8b681f}
+.cf-root .cf-text-high {color:#a4572a}
+.cf-root .cf-text-deadly {color:#9d352c}
+.cf-root .cf-text-muted {color:#8c7751}
+.cf-root .cf-bg-low {background:#6f8554}
+.cf-root .cf-bg-moderate {background:#a78a3b}
+.cf-root .cf-bg-high {background:#b0783f}
+.cf-root .cf-bg-deadly {background:#a2513e}
+.cf-root ::-webkit-scrollbar-track {background:#c8b58c77;border-left:1px solid #b9a07166}
+.cf-root ::-webkit-scrollbar-thumb {background:#a88c58;border:1px solid #cbb78f;border-radius:0}
+
+/* The Ledger keeps catalogue repair work on a separate, scrollable journal page. */
+.cf-root .cf-ledger {display:flex;flex:1;min-height:0;flex-direction:column;padding:23px 27px 0;background-color:#e0d2b1;background-image:url("../assets/parchment.svg"),radial-gradient(ellipse at 50% 8%,#fff7df77,transparent 80%)}
+.cf-ledger-header {display:flex;align-items:center;justify-content:space-between;gap:18px;padding-bottom:18px;border-bottom:3px double #a88b58;flex:none}
+.cf-root .cf-ledger-header h2 {font-size:29px;color:#62451f;font-weight:400;letter-spacing:.2px}
+.cf-ledger-header p {font-size:13px;color:#8a7149;margin-top:5px}
+.cf-ledger-header>div:last-child {display:flex;gap:7px;flex:none}
+.cf-ledger-header button {font-size:12px}
+.cf-ledger-totals {display:grid;grid-template-columns:repeat(4,1fr);gap:20px;padding:17px 20px 19px;border-bottom:1px solid #bba272;flex:none;text-align:center}
+.cf-ledger-totals>div {display:flex;flex-direction:column;gap:2px;border-right:1px solid #bda57588}
+.cf-ledger-totals>div:last-child {border:0}
+.cf-ledger-totals strong {font-size:26px;color:#79542a;font-weight:400;line-height:1.2}
+.cf-ledger-totals span {color:#8c724b;font-size:12px;font-variant:small-caps;letter-spacing:.5px}
+.cf-ledger-tabs {display:flex;gap:4px;padding:15px 0 10px;flex:none}
+.cf-root .cf-ledger-tabs button {border-color:transparent;background:none;padding:6px 14px;font-variant:small-caps;letter-spacing:.5px;font-size:14px;color:#8b7047}
+.cf-root .cf-ledger-tabs button.cf-active {color:#70431e;border-color:#bba16c;background:#ceb58033;border-bottom:2px solid #94703a}
+.cf-ledger-controls {display:flex;align-items:end;gap:12px;padding:0 0 13px;flex:none}
+.cf-ledger-controls .cf-search {flex:1}
+.cf-root .cf-ledger-controls .cf-select-label {min-width:170px;color:#876c43;font-size:11px;gap:3px}
+.cf-ledger-content {flex:1;min-height:0;overflow:auto;border-top:1px solid #af9563}
+.cf-root .cf-health-table {table-layout:fixed}
+.cf-health-table th,.cf-health-table td {text-align:left;border-bottom:1px solid #bba27680;padding:12px;vertical-align:middle}
+.cf-health-table th {position:sticky;top:0;background:#d1bb92 url("../assets/parchment.svg");font-size:11px;font-weight:400;text-transform:uppercase;letter-spacing:1px;color:#7d5e34;z-index:1}
+.cf-health-table th:nth-child(1) {width:28%}
+.cf-health-table th:nth-child(2) {width:25%}
+.cf-health-table th:nth-child(3) {width:33%}
+.cf-health-table th:nth-child(4) {width:14%}
+.cf-root .cf-health-table tr:nth-child(even) {background:#c4a97013}
+.cf-health-table td {font-size:13px;color:#765b37}
+.cf-health-table td>strong {display:block;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cf-health-table td>small {display:block;color:#94794e;font-size:11px;margin-top:4px;overflow:hidden;text-overflow:ellipsis}
+.cf-health-name {display:flex;align-items:center;gap:10px;min-width:0}
+.cf-health-name>span {min-width:0}
+.cf-health-name strong {display:block;color:#5a3d1f;font-size:15px;font-weight:400;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.cf-health-name small {display:block;color:#96794c;font-size:11px;margin-top:3px}
+.cf-health-name .cf-portrait {width:32px;height:36px}
+.cf-issue-list {display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+.cf-root .cf-issue {display:inline-block;background:#b18b4717;color:#8b672f;border:1px solid #bba06c;font-size:10px;padding:2px 6px;white-space:nowrap;line-height:1.5}
+.cf-root .cf-issue-error {background:#a9523421;color:#963b28;border-color:#bb8565}
+.cf-root .cf-issue-resolved {background:#6c8a4820;color:#4e673d;border-color:#97a071}
+.cf-root .cf-correction-seal,.cf-root .cf-healthy {font-size:11px;color:#667143;font-style:italic}
+.cf-health-row-actions {display:flex;gap:5px;flex-wrap:wrap}
+.cf-health-row-actions button {font-size:11px;padding:5px 8px}
+.cf-root .cf-health-note {font-size:12px;line-height:1.7;color:#8b7047;padding:13px 5px}
+.cf-duplicate-list,.cf-reference-list {display:flex;flex-direction:column;gap:14px;padding:2px 0 15px}
+.cf-duplicate-card,.cf-reference-card {border:3px double #b39863;background:#eee1c145;box-shadow:1px 2px 6px #70501c16}
+.cf-duplicate-card header {display:flex;justify-content:space-between;align-items:center;gap:10px;background:#c6aa7130;padding:10px 14px;border-bottom:1px solid #bba06a}
+.cf-root .cf-duplicate-card h3 {font-size:19px;color:#68451d}
+.cf-duplicate-card header>span {font-size:11px;color:#8d7046}
+.cf-duplicate-row {display:flex;align-items:center;gap:15px;padding:12px 14px;border-bottom:1px solid #bda37166}
+.cf-duplicate-row:last-child {border:0}
+.cf-duplicate-row>.cf-health-name {flex:1;min-width:150px}
+.cf-duplicate-source {display:block;flex:1;min-width:0}
+.cf-duplicate-source strong {display:block;font-weight:400;color:#806038;font-size:13px}
+.cf-duplicate-source small {display:block;font-size:10px;color:#9a7b4b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:4px}
+.cf-duplicate-row>button {font-size:12px;flex:none}
+.cf-duplicate-hidden {background:#af996819}
+.cf-duplicate-hidden>.cf-health-name,.cf-duplicate-hidden>.cf-duplicate-source {opacity:.55}
+.cf-reference-card {display:flex;align-items:center;justify-content:space-between;gap:20px;padding:16px}
+.cf-reference-card>div:first-child {min-width:0;flex:1}
+.cf-root .cf-reference-card h3 {font-size:20px;color:#65451e;margin:6px 0}
+.cf-reference-card code,.cf-reference-uuid {font:11px/1.6 "Consolas",monospace;color:#927449;overflow-wrap:anywhere}
+.cf-reference-card small {display:block;font-size:11px;color:#93764b;margin-top:5px}
+.cf-reference-card p {font-size:12px;color:#8b6a3d;margin-top:7px}
+.cf-reference-card p>.cf-symbol {margin-right:4px}
+.cf-reference-actions {display:flex;flex-direction:column;align-items:stretch;gap:6px;flex:none}
+.cf-reference-actions button {font-size:12px}
+.cf-health-source-errors {background:#9e543318;padding:10px 13px;border:1px solid #bd8c61;margin-bottom:12px;max-height:90px;overflow:auto;flex:none;color:#935333;font-size:12px}
+.cf-health-source-errors p+p {margin-top:5px}
+.cf-ledger-footer {display:flex;align-items:center;justify-content:space-between;padding:9px 0;gap:10px;color:#8d7148;font-size:11px;flex:none;border-top:3px double #b59b67}
+.cf-ledger-footer>div {display:flex;gap:9px;align-items:center}
+.cf-ledger-footer .cf-icon-button {border:0;background:none;color:#8b6734}
+.cf-root .cf-ledger-empty {min-height:200px;height:100%;color:#91764c}
+.cf-ledger-empty h3 {font-size:21px;color:#7a5427}
+.cf-ledger-empty p {font-size:12px;color:#9a7b4c}
+.cf-repair-title {display:flex;align-items:center;gap:12px}
+.cf-repair-title>.cf-portrait {width:47px;height:47px}
+.cf-root .cf-repair-title h3 {font-size:23px;color:#66431c}
+.cf-repair-title small {font-size:12px;color:#8c7044}
+.cf-root .cf-reset-correction {align-self:start;color:#95633a;font-size:12px;background:none}
+.cf-root .cf-dialog select.cf-replacement-options {height:180px;padding:5px}
+.cf-root .cf-replacement-options option {padding:6px;font-size:12px}
+.cf-root .cf-replacement-options option:checked {background:#b69a65;color:#3f2c15}
+@media(max-width:1100px) {
+  .cf-root .cf-tabs button[role="tab"] {font-size:16px;padding-left:11px;padding-right:11px}
+  .cf-root .cf-monster-name strong {font-size:12px}
+  .cf-root .cf-monster-table td {font-size:11px}
+  .cf-root .cf-toolbar {gap:5px}
+  .cf-root .cf-line-info strong {font-size:11px}
+  .cf-root .cf-ledger {padding:17px 19px 0}
+  .cf-root .cf-ledger-header h2 {font-size:25px}
+  .cf-ledger-header p {font-size:11px}
+  .cf-root .cf-health-table th:nth-child(1) {width:28%}
+  .cf-root .cf-health-table th:nth-child(2) {width:23%}
+  .cf-root .cf-health-table th:nth-child(3) {width:34%}
+  .cf-root .cf-health-table th:nth-child(4) {width:15%}
+  .cf-health-name strong {font-size:13px}
+  .cf-health-table td {font-size:12px;padding:10px 8px}
+  .cf-health-name {gap:7px}
+  .cf-ledger-totals {padding:12px}
+}
+@media(max-height:720px) {
+  .cf-root .cf-tabs {min-height:48px;padding-top:6px;padding-bottom:7px}
+  .cf-root .cf-difficulty-top {font-size:9px}
+  .cf-root .cf-summary-stats {font-size:11px;gap:3px}
+  .cf-root .cf-party-state {font-size:10px;padding:6px 0}
+  .cf-root .cf-party-info strong {font-size:13px}
+  .cf-root .cf-party-info>span {font-size:10px}
+  .cf-root .cf-ledger-header {padding-bottom:10px}
+  .cf-root .cf-ledger-header h2 {font-size:23px}
+  .cf-ledger-header p {display:none}
+  .cf-ledger-totals {padding:10px}
+  .cf-ledger-totals strong {font-size:22px}
+  .cf-ledger-totals span {font-size:11px}
+  .cf-ledger-tabs {padding-top:8px;padding-bottom:7px}
+}

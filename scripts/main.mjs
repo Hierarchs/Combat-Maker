@@ -4,6 +4,7 @@ import { assessEncounter } from "./difficulty.mjs";
 import { generateEncounter } from "./generator.mjs";
 import { normalizeMonster, normalizeCharacter } from "./normalize.mjs";
 import { deployEncounter } from "./deploy.mjs";
+import { EMPTY_REPAIRS } from "./repairs.mjs";
 
 let app;
 export function openForge() {
@@ -23,7 +24,8 @@ Hooks.once("init",()=> {
     sources:{scope:"world",type:Object,default:{auto:true,packs:[],world:true}},
     homebrew:{scope:"world",type:Array,default:[]},
     defaultRules:{scope:"world",type:Object,default:{...DEFAULT_RULES}},
-    draft:{scope:"client",type:Object,default:{}}
+    draft:{scope:"client",type:Object,default:{}},
+    catalogRepairs:{scope:"world",type:Object,default:structuredClone(EMPTY_REPAIRS)}
   };
   for(const [key,config] of Object.entries(settings))game.settings.register(ID,key,{...config,config:false});
   game.settings.registerMenu(ID,"openForge",{name:"Combat Forge",label:"Open encounter builder",hint:"Choose sources, configure difficulty rules, and manage your encounter Vault.",icon:"fa-solid fa-hammer",type:ForgeSettingsMenu,restricted:true});

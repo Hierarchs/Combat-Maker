@@ -17,33 +17,46 @@ function environments(value) {
   return String(value).split(/[,;|]/).map(v => titleCase(v.trim())).filter(Boolean);
 }
 
-/** Accepts a full Actor or a compendium index record. Never mutates either. */
-export function normalizeMonster(actor, pack = null) {
+/** Describe invalid NPCs too, so the Ledger can repair their catalogue metadata. */
+export function describeMonster(actor, pack = null, correction = {}) {
   if (!actor || actor.type !== "npc") return null;
   const system = actor.system ?? {};
   const flags = actor.flags?.[ID] ?? {};
-  const cr = parseCR(system.details?.cr);
-  if (cr === null) return null;
+  const cr = parseCR(correction.cr ?? flags.cr ?? system.details?.cr);
   const source = system.source ?? system.details?.source ?? {};
-  const book = String(flags.book || (typeof source === "string" ? source : source.book || source.custom)
-    || pack?.metadata?.flags?.dnd5e?.sourceBook || pack?.metadata?.label || "Homebrew");
-  const explicitEdition = flags.edition || source.rules;
+  const knownBook = correction.book || flags.book || (typeof source === "string" ? source : source.book || source.custom)
+    || pack?.metadata?.flags?.dnd5e?.sourceBook;
+  const book = String(knownBook || pack?.metadata?.label || "Homebrew");
+  const explicitEdition = correction.edition || flags.edition || source.rules;
   const edition = ["2014","2024"].includes(String(explicitEdition)) ? String(explicitEdition)
     : /2024|2025|srd\s*5\.2/i.test(book) ? "2024" : /2014|srd\s*5\.1/i.test(book) ? "2014" : "Unknown";
   const rawType = system.details?.type;
-  const type = titleCase(typeof rawType === "string" ? rawType : rawType?.value || rawType?.custom || "Unknown");
+  const type = titleCase(correction.type || (typeof rawType === "string" ? rawType : rawType?.value || rawType?.custom || "Unknown"));
   const id = actor.id ?? actor._id;
   const uuid = actor.uuid || (pack ? (pack.getUuid?.(id) ?? `Compendium.${pack.collection}.Actor.${id}`) : `Actor.${id}`);
-  const xp = number(system.details?.xp?.value, CR_XP.get(cr));
-  return {
+  const xp = cr !== parseCR(system.details?.cr) ? CR_XP.get(cr) : number(system.details?.xp?.value, CR_XP.get(cr));
+  const habitats = [...new Set(environments(correction.environments || flags.environments || system.details?.habitat || system.details?.environment))];
+  const issues=[];
+  if(cr===null)issues.push({field:"cr",label:"Missing or invalid CR",severity:"error"});
+  if(!String(knownBook||"").trim())issues.push({field:"book",label:"Missing book",severity:"warning"});
+  if(edition==="Unknown")issues.push({field:"edition",label:"Unknown edition",severity:"warning"});
+  if(!habitats.length)issues.push({field:"environment",label:"Missing environment",severity:"warning"});
+  const monster = {
     uuid, name: String(actor.name || "Unnamed creature"), img: String(actor.img || "icons/svg/mystery-man.svg"),
-    cr, xp: Math.max(0,xp), type, subtype: String(rawType?.subtype || ""),
-    size: SIZE_NAMES[String(system.traits?.size).toLowerCase()] || titleCase(system.traits?.size || "Unknown"),
+    cr, xp: Math.max(0,xp||0), type, subtype: String(rawType?.subtype || ""),
+    size: correction.size || SIZE_NAMES[String(system.traits?.size).toLowerCase()] || titleCase(system.traits?.size || "Unknown"),
     book, edition, alignment: titleCase(system.details?.alignment || "Unknown"),
-    environments: [...new Set(environments(flags.environments || system.details?.habitat || system.details?.environment))],
+    environments: habitats,
     legendary: number(system.resources?.legact?.max) > 0 || number(system.resources?.legres?.max) > 0,
     swarm: Boolean(rawType?.swarm), pack: pack?.collection || "", packLabel: pack?.metadata?.label || "World / Homebrew"
   };
+  return {monster,issues,knownBook:Boolean(String(knownBook||"").trim()),originalCR:system.details?.cr};
+}
+
+/** Accepts a full Actor or index record; corrections never mutate the source. */
+export function normalizeMonster(actor, pack = null, correction = {}) {
+  const description=describeMonster(actor,pack,correction);
+  return description && description.monster.cr !== null ? description.monster : null;
 }
 
 /** Read prepared actor data, including effects, so estimates track the actual sheet. */

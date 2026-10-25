@@ -2,6 +2,8 @@
 
 Combat Forge's software and original SVG artwork are licensed under MIT. No monster stat blocks, commercial artwork, compendium contents, Foundry code, or D&D5e system code are included in the installable module.
 
+The parchment menu theme is an original stylistic homage to classic fantasy interfaces, including The Elder Scrolls IV: Oblivion. No Bethesda/ZeniMax textures, fonts, icons, logos, screenshots, or game code are bundled. The Elder Scrolls and Oblivion belong to their respective owners; this project is unaffiliated.
+
 The numerical CR-to-XP conversion in `scripts/constants.mjs` is game data from the System Reference Document 5.1. The 2024 encounter-budget data is from the System Reference Document 5.2. The 2014 encounter-threshold numbers and multiplier ladder are referenced from the [official 2014 Basic Rules](https://www.dndbeyond.com/sources/dnd/basic-rules-2014/building-combat-encounters). The SRD portions retain their Creative Commons attribution:
 
 This work includes material taken from the System Reference Document 5.1 ("SRD 5.1") by Wizards of the Coast LLC and available at https://dnd.wizards.com/resources/systems-reference-document. The SRD 5.1 is licensed under the Creative Commons Attribution 4.0 International License available at https://creativecommons.org/licenses/by/4.0/legalcode.

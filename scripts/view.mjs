@@ -3,6 +3,10 @@ import { formatCR, formatNumber as num } from "./constants.mjs";
 export const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const e=escapeHTML;
 const SYMBOLS = {
+  'feather-pointed':'<path d="M4 20 16 8m-9 9-2-6L16 1l7 1-1 7-11 10-4-2Zm5-5h6m-2-4h6"/>',
+  'arrow-right':'<path d="M3 12h18m-7-7 7 7-7 7"/>',
+  copy:'<rect x="8" y="8" width="13" height="13" rx="1"/><path d="M16 4V2H2v14h2"/>',
+  'circle-check':'<circle cx="12" cy="12" r="10"/><path d="m7 12 3 3 7-7"/>',
   hammer:'<path d="m4 20 9-9m-3-5 4-4 8 8-4 4-3-3-4 4-4-4 4-4Z"/>',
   vault:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="5"/><path d="M12 7v3m0 4v3m-5-5h3m4 0h3M5 6h1m12 12h1"/>',
   books:'<path d="M3 4h5v17H3Zm7 0h5v17h-5Zm6 1 4-1 4 16-4 1Z"/>',
@@ -74,7 +78,7 @@ export function monsterRowsHTML(monsters) {
   <td><div class="cf-monster-name">${portrait(m.img,m.name)}<div><strong>${e(m.name)}</strong><small title="${e(m.packLabel)}">${e(m.book)}</small></div></div></td>
   <td class="cf-cr">${formatCR(m.cr)}</td><td>${e(m.type)}${m.subtype?`<small class="cf-subtype">${e(m.subtype)}</small>`:""}${m.legendary?`<span class="cf-legendary" title="Legendary creature">${icon("crown")}</span>`:""}</td>
   <td>${e(m.size)}</td><td class="cf-numeric">${num(m.xp)}</td><td><span class="cf-edition cf-edition-${e(m.edition)}">${m.edition==="Unknown"?"—":e(m.edition)}</span></td>
-  <td class="cf-row-actions">${iconButton("sheet",`View ${m.name}`,"eye",`data-uuid="${e(m.uuid)}"`)}${iconButton("add-monster",`Add ${m.name}`,"plus",`data-uuid="${e(m.uuid)}"`)}</td></tr>`).join("");
+  <td class="cf-row-actions">${iconButton("sheet",`View ${m.name}`,"eye",`data-uuid="${e(m.uuid)}"`)}${iconButton("repair-monster",`Edit metadata for ${m.name}`,"feather-pointed",`data-uuid="${e(m.uuid)}"`)}</td></tr>`).join("");
 }
 
 export function vaultHTML(entries) {
@@ -91,8 +95,8 @@ export function vaultHTML(entries) {
 export function shellHTML(state) {
   const {tab,party,missingParty,lines,report,rules,facets:f,filters,monsters,totalMatches,catalog,entries,page,pageSize}=state;
   const pages=Math.max(1,Math.ceil(totalMatches/pageSize));
-  return `<nav class="cf-tabs" aria-label="Combat Forge views"><div role="tablist">${button("tab-forge","The Forge","hammer",`role="tab" aria-selected="${tab==="forge"}" class="${tab==="forge"?"cf-active":""}"`)}${button("tab-vault","The Vault","vault",`role="tab" aria-selected="${tab==="vault"}" class="${tab==="vault"?"cf-active":""}"`)}<span class="cf-vault-count">${entries.length}</span></div><span class="cf-tagline">Every great story starts with a fight.</span>${iconButton("help","Help and shortcuts","circle-question")}</nav>
-  <div class="cf-body ${tab==="vault"?"cf-hidden":""}" role="tabpanel" aria-label="The Forge">
+  return `<nav class="cf-tabs" aria-label="Combat Forge views"><div role="tablist">${button("tab-forge","The Forge","hammer",`role="tab" aria-selected="${tab==="forge"}" class="${tab==="forge"?"cf-active":""}"`)}${button("tab-vault","The Vault","vault",`role="tab" aria-selected="${tab==="vault"}" class="${tab==="vault"?"cf-active":""}"`)}<span class="cf-vault-count">${entries.length}</span>${button("tab-health","The Ledger","book-open",`role="tab" aria-selected="${tab==="health"}" class="${tab==="health"?"cf-active":""}"`)}</div><span class="cf-tagline">A chronicle of creatures & encounters</span>${iconButton("help","Help and shortcuts","circle-question")}</nav>
+  <div class="cf-body ${tab!=="forge"?"cf-hidden":""}" role="tabpanel" aria-label="The Forge">
     <aside class="cf-sidebar"><section class="cf-party" data-drop="party"><header class="cf-section-header"><h2>Party <span>${party.length}</span></h2><div>${iconButton("choose-party","Choose party","user-plus")}${iconButton("clear-party","Clear party","xmark")}</div></header><div class="cf-party-list" data-scroll="party">${partyHTML(party,missingParty)}</div><button type="button" class="cf-add-party" data-cf-action="choose-party">${icon("plus")} Choose adventurers <span>or drop character actors</span></button></section>
     <section class="cf-encounter" data-drop="encounter"><header class="cf-section-header"><h2>Encounter</h2><div>${button("save","Save","floppy-disk",!lines.length?"disabled":"")}${iconButton("clear-encounter","Clear encounter","xmark")}</div></header>${state.loadedName?`<div class="cf-loaded">${icon("bookmark")} ${e(state.loadedName)}${state.dirty?" <b>· edited</b>":""}</div>`:""}<div class="cf-encounter-list" data-scroll="encounter">${encounterLinesHTML(lines)}</div></section>
     <section class="cf-summary">${summaryHTML(report,rules,party.length>0)}</section></aside>
@@ -104,5 +108,6 @@ export function shellHTML(state) {
     ${!monsters.length?`<div class="cf-empty cf-catalog-empty">${icon(catalog.monsters.length?"magnifying-glass":"books")}<h3>${catalog.running?"Indexing your bestiary…":catalog.monsters.length?"No creatures match":"Build your bestiary"}</h3><p>${catalog.monsters.length?"Try another filter or search term.":"Choose installed Actor compendiums, or drop a homebrew NPC into this window."}</p>${button(catalog.monsters.length?"clear-filters":"sources",catalog.monsters.length?"Clear filters":"Choose sources","sliders")}</div>`:""}</div>
     <footer class="cf-browser-footer"><span>${totalMatches?`${num(page*pageSize+1)}–${num(Math.min((page+1)*pageSize,totalMatches))} of ${num(totalMatches)}`:"0"} matching · Drop NPC actors to add homebrew</span><div>${iconButton("previous-page","Previous page","chevron-left",page===0?"disabled":"")}<span>${page+1} / ${pages}</span>${iconButton("next-page","Next page","chevron-right",page>=pages-1?"disabled":"")}</div></footer></main>
   </div><main class="cf-vault ${tab!=="vault"?"cf-hidden":""}" role="tabpanel" aria-label="The Vault"><header class="cf-vault-header"><div><span class="cf-eyebrow">THE VAULT</span><h2>Encounters worth keeping.</h2></div><span>${entries.length} saved encounter${entries.length===1?"":"s"}</span></header>${vaultHTML(entries)}</main>
+  <main class="cf-ledger ${tab!=="health"?"cf-hidden":""}" role="tabpanel" aria-label="The Bestiary Ledger">${state.ledgerHTML||""}</main>
   <div class="cf-toast ${state.toast?"":"cf-hidden"}" role="status">${e(state.toast)}</div><dialog class="cf-dialog" aria-label="Combat Forge dialog"></dialog>`;
 }

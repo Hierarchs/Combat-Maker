@@ -2,10 +2,12 @@ import { ID, DEFAULT_RULES, MAX_MONSTERS, formatNumber as num, formatCR } from "
 import { normalizeCharacter, normalizeMonster, filterMonsters, facets } from "./normalize.mjs";
 import { assessEncounter, rulesConfig } from "./difficulty.mjs";
 import { generateEncounter } from "./generator.mjs";
-import { actorPacks, MonsterCatalog } from "./catalog.mjs";
+import { actorPacks, actorPack, MonsterCatalog } from "./catalog.mjs";
 import { vaultEntries, saveEncounter, validateEncounter } from "./vault.mjs";
 import { deployEncounter, pickCanvasPoint } from "./deploy.mjs";
 import { shellHTML, escapeHTML as e, icon, button, select, portrait } from "./view.mjs";
+import { healthHTML } from "./health-view.mjs";
+import { saveCorrection, resetCorrection, setHidden, preferDuplicate, saveReplacement, removeReplacement, resolveReplacement, repairState } from "./repairs.mjs";
 
 export class ForgeController {
   constructor(root) {
@@ -14,6 +16,7 @@ export class ForgeController {
     this.lines=[];this.party=[];this.partyUuids=[];this.missingParty=[];this.rules={...DEFAULT_RULES};
     this.loadedId=null;this.loadedName="";this.dirty=false;this.progress=null;this.toast="";this.busy=false;
     this.abort=new AbortController();this.writeQueue=Promise.resolve();
+    this.health={section:"metadata",filter:"issues",search:"",pack:"",page:0,scanning:false};
   }
 
   async mount() {
@@ -51,7 +54,7 @@ export class ForgeController {
   get dialog() {return this.root.querySelector(".cf-dialog");}
   get report() {return assessEncounter(this.lines,this.party,this.rules);}
   get entries() {return vaultEntries();}
-  findMonster(uuid) {return this.catalog.monsters.find(m=>m.uuid===uuid) ?? this.lines.find(l=>l.monster.uuid===uuid)?.monster;}
+  findMonster(uuid) {return this.catalog.get(uuid) ?? this.lines.find(l=>l.monster.uuid===uuid)?.monster;}
 
   async syncParty() {
     const party=[],missing=[];
@@ -70,7 +73,7 @@ export class ForgeController {
       if(!this.lastProgressPaint || Date.now()-this.lastProgressPaint>180){this.lastProgressPaint=Date.now();this.paint();}
     });
     this.progress=null;
-    for(const line of this.lines){const m=this.catalog.monsters.find(m=>m.uuid===line.monster.uuid);if(m){line.monster=m;line.missing=false;}}
+    for(const line of this.lines){const m=this.catalog.get(line.monster.uuid);if(m){line.monster=m;line.missing=false;}}
     this.paint();
   }
 
@@ -98,7 +101,8 @@ export class ForgeController {
     });
     this.page=Math.max(0,Math.min(this.page,Math.ceil(matches.length/this.pageSize)-1));
     this.root.innerHTML=shellHTML({...this,report:this.report,facets:facets(this.catalog.monsters),
-      monsters:matches.slice(this.page*this.pageSize,(this.page+1)*this.pageSize),totalMatches:matches.length,entries:this.entries});
+      monsters:matches.slice(this.page*this.pageSize,(this.page+1)*this.pageSize),totalMatches:matches.length,entries:this.entries,
+      ledgerHTML:this.tab==="health"?healthHTML(this.catalog,this.health):""});
     for(const [key,top] of scrolls) this.root.querySelector(`[data-scroll="${key}"]`)?.scrollTo(0,top);
     if(focusName) {
       const input=[...this.root.querySelectorAll("[name]")].find(el=>el.name===focusName);
@@ -117,6 +121,19 @@ export class ForgeController {
     const action=target.dataset.cfAction,uuid=target.dataset.uuid,id=target.dataset.id;
     try {
       if(action==="tab-forge" || action==="tab-vault"){this.tab=action==="tab-forge"?"forge":"vault";this.paint();}
+      else if(action==="tab-health"){this.tab="health";this.paint();await this.scanHealth(false);}
+      else if(action==="audit-health")await this.scanHealth();
+      else if(action==="health-section"){this.health.section=target.dataset.section;this.health.page=0;this.paint();}
+      else if(action==="health-prev"||action==="health-next"){this.health.page+=action==="health-next"?1:-1;this.paint();}
+      else if(action==="repair-monster")this.repairMonsterDialog(uuid);
+      else if(action==="reset-correction"){await resetCorrection(uuid);this.closeDialog();await this.refreshAfterRepair();}
+      else if(action==="restore-monster"){await setHidden(uuid,false);await this.refreshAfterRepair();}
+      else if(action==="prefer-monster"){
+        const group=this.catalog.duplicates.find(g=>g.items.some(r=>r.uuid===uuid));
+        if(group){await preferDuplicate(group.items.map(r=>r.uuid),uuid);await this.refreshAfterRepair();}
+      }
+      else if(action==="replace-reference")this.replaceReferenceDialog(uuid);
+      else if(action==="remove-replacement"){await removeReplacement(uuid);await this.refreshAfterRepair();}
       else if(action==="sort"){this.desc=this.sort===target.dataset.key?!this.desc:false;this.sort=target.dataset.key;this.page=0;this.paint();}
       else if(action==="add-monster" || action==="increment")this.addMonster(this.findMonster(uuid));
       else if(action==="decrement"){const line=this.lines.find(l=>l.monster.uuid===uuid);if(line?.quantity>1)line.quantity--;else this.lines=this.lines.filter(l=>l.monster.uuid!==uuid);this.changed();}
@@ -127,7 +144,7 @@ export class ForgeController {
       else if(action==="clear-filters"){this.filters={};this.page=0;this.paint();}
       else if(action==="next-page" || action==="previous-page"){this.page+=action==="next-page"?1:-1;this.paint();this.root.querySelector('[data-scroll="monsters"]')?.scrollTo(0,0);}
       else if(action==="refresh")await this.refreshCatalog();
-      else if(action==="sheet"){const doc=await foundry.utils.fromUuid(uuid);if(!doc?.sheet)throw new Error("This actor is unavailable. Check that its compendium is installed and enabled.");doc.sheet.render({force:true});}
+      else if(action==="sheet"){const doc=await foundry.utils.fromUuid(resolveReplacement(uuid));if(!doc?.sheet)throw new Error("This actor is unavailable. Choose a replacement in the Bestiary Ledger.");doc.sheet.render({force:true});}
       else if(action==="choose-party")this.chooseParty();
       else if(action==="rules")this.rulesDialog();
       else if(action==="sources")this.sourcesDialog();
@@ -147,6 +164,10 @@ export class ForgeController {
   onInput(event) {
     const input=event.target;
     if(this.dialog?.contains(input))return;
+    if(input.name==="healthSearch") {
+      this.health.search=input.value;this.health.page=0;
+      clearTimeout(this.searchTimer);this.searchTimer=setTimeout(()=>this.paint(),140);return;
+    }
     if(input.name==="search" || input.matches("input[data-filter]")) {
       this.filters[input.name]=input.value;this.page=0;
       clearTimeout(this.searchTimer);this.searchTimer=setTimeout(()=>this.paint(),140);
@@ -155,6 +176,9 @@ export class ForgeController {
   onChange(event) {
     const input=event.target;
     if(this.dialog?.contains(input))return;
+    if(input.name==="healthFilter"||input.name==="healthPack"){
+      this.health[input.name==="healthFilter"?"filter":"pack"]=input.value;this.health.page=0;this.paint();return;
+    }
     if(input.matches("select[data-filter]")){this.filters[input.name]=input.value;this.page=0;this.paint();}
     if(input.dataset.quantity) {
       const line=this.lines.find(l=>l.monster.uuid===input.dataset.quantity);
@@ -182,9 +206,12 @@ export class ForgeController {
         if(!this.partyUuids.includes(actor.uuid))this.partyUuids.push(actor.uuid);
         await this.syncParty();this.changed();this.notify(`${actor.name} joined the party.`);
       } else {
-        const monster=await this.catalog.addActor(actor);
-        if(event.target.closest('[data-drop="encounter"]'))this.addMonster(monster);
-        this.paint();this.notify(`${monster.name} added to your bestiary.`);
+        const record=await this.catalog.addActor(actor);
+        if(!record.monster){this.tab="health";this.paint();this.repairMonsterDialog(record.uuid);}
+        else {
+          if(event.target.closest('[data-drop="encounter"]'))this.addMonster(record.monster);
+          this.paint();this.notify(`${record.name} added to your bestiary.`);
+        }
       }
     }catch(error){this.error(error);}
   }
@@ -195,6 +222,7 @@ export class ForgeController {
     dialog.setAttribute("aria-label",title);
     dialog.classList.toggle("cf-dialog-wide",wide);
     dialog.innerHTML=`<form class="cf-dialog-form"><header><h2>${e(title)}</h2>${button("close-dialog","Close","xmark","class=\"cf-dialog-close\" aria-label=\"Close dialog\"")}</header><div class="cf-dialog-body">${body}<p class="cf-dialog-error cf-hidden" role="alert"></p></div><footer>${onSubmit?`<button type="submit" class="cf-primary">${icon("check")} ${e(submit)}</button>`:""}${button("close-dialog",onSubmit?"Cancel":"Close",null)}</footer></form>`;
+    dialog.querySelector("form").addEventListener("input",()=>dialog.querySelector(".cf-dialog-error").classList.add("cf-hidden"));
     dialog.addEventListener("cancel",()=>queueMicrotask(()=>{if(this.paintPending)this.paint();}),{once:true});
     if(onSubmit)dialog.querySelector("form").addEventListener("submit",async event=> {
       event.preventDefault();
@@ -238,18 +266,73 @@ export class ForgeController {
     <label class="cf-check"><input name="world" type="checkbox" ${sources.world?"checked":""}><span>Include NPC actors from this world</span></label>
     <div class="cf-source-list">${packs.map(pack=>`<label><input name="pack" type="checkbox" value="${e(pack.collection)}" ${sources.packs.includes(pack.collection)?"checked":""}><span><strong>${e(pack.metadata.label)}</strong><small>${e(pack.collection)}</small></span>${icon("book-open")}</label>`).join("")||"<p>No Actor compendiums are installed.</p>"}</div>
     <p class="cf-source-hint">When automatic discovery is off, only checked packs are indexed. Monsters need an NPC type and a valid CR. Missing edition and environment fields stay unknown.</p>
-    <div class="cf-callout">${num(this.catalog.monsters.length)} indexed · ${num(this.catalog.skipped)} NPCs skipped for invalid CR · ${game.settings.get(ID,"homebrew").length} dropped actor references${this.catalog.errors.map(err=>`<p class="cf-text-high">${e(err.name)}: ${e(err.message)}</p>`).join("")}</div>
+    <div class="cf-callout">${num(this.catalog.monsters.length)} indexed · ${num(this.catalog.skipped)} NPCs need CR repairs · ${num(this.catalog.issueCount)} need metadata. Open the Bestiary Ledger to review individual creatures, duplicates, and broken references.${this.catalog.errors.map(err=>`<p class="cf-text-high">${e(err.name)}: ${e(err.message)}</p>`).join("")}</div>
     <label class="cf-check"><input name="clearDrops" type="checkbox"><span>Forget manually dropped actor references (keeps the source actors)</span></label>`;
     const dialog=this.showDialog("Compendium sources",body,async data=> {
-      await game.settings.set(ID,"sources",{auto:data.has("auto"),world:data.has("world"),packs:data.getAll("pack")});
+      await game.settings.set(ID,"sources",{auto:data.has("auto"),world:data.has("world"),packs:data.has("auto")?sources.packs:data.getAll("pack")});
       if(data.has("clearDrops"))await game.settings.set(ID,"homebrew",[]);
-      this.closeDialog();await this.refreshCatalog();this.notify("Bestiary refreshed from your sources.");
+      this.closeDialog();await this.refreshCatalog();if(this.tab==="health")await this.scanHealth(false);this.notify("Bestiary refreshed from your sources.");
     },{submit:"Save & re-index",wide:true});
     const update=()=> {
       const auto=dialog.querySelector('[name="auto"]').checked;
       dialog.querySelectorAll('[name="pack"]').forEach(input=>{input.disabled=auto;input.closest("label").classList.toggle("cf-source-auto",auto);});
     };
     dialog.querySelector('[name="auto"]').addEventListener("change",update);update();
+  }
+
+  async scanHealth(refresh=true) {
+    if(this.health.scanning)return;
+    this.health.scanning=true;this.paint();
+    try {
+      if(refresh)await this.refreshCatalog();
+      await this.catalog.auditReferences(this.entries,this.lines);
+    }finally {this.health.scanning=false;this.paint();}
+  }
+
+  async refreshAfterRepair() {
+    await this.refreshCatalog();
+    await this.catalog.auditReferences(this.entries,this.lines);
+    this.changed(this.dirty);this.notify("The Ledger has been updated. Source actors are unchanged.");
+  }
+
+  repairMonsterDialog(uuid) {
+    const record=this.catalog.byUuid.get(uuid);
+    if(!record)throw new Error("That actor is not in the current scan. Scan the Ledger again or enable its source.");
+    const m=record.description;
+    const body=`<span class="cf-eyebrow">A MARGINAL NOTE, KEPT IN THIS WORLD</span><div class="cf-repair-title">${portrait(m.img,m.name)}<div><h3>${e(m.name)}</h3><small>${e(record.packLabel)}</small></div></div>
+      <div class="cf-issue-list">${record.issues.map(i=>`<span class="cf-issue cf-issue-${i.severity}">${e(i.label)}</span>`).join("")||'<span class="cf-healthy">Metadata complete</span>'}</div>
+      <div class="cf-field-grid"><label class="cf-field">Challenge rating<input name="cr" type="text" value="${m.cr===null?"":e(formatCR(m.cr))}" placeholder="e.g. 1/4 or 5" required><small>Source CR: ${e(record.originalCR??"missing")}. A correction changes builder XP, not the source stat block.</small></label>${select("edition","Edition",["2014","2024"],m.edition==="Unknown"?"":m.edition,"Unknown / use source")}</div>
+      <label class="cf-field">Source book<input name="book" type="text" maxlength="180" value="${record.knownBook?e(m.book):""}" placeholder="${e(m.book)}"><small>A pack label is shown as a fallback until a book is supplied.</small></label>
+      <label class="cf-field">Environments<input name="environments" type="text" value="${e(m.environments.join(", "))}" placeholder="Forest, Mountain, Urban"><small>Separate multiple environments with commas.</small></label>
+      <div class="cf-field-grid"><label class="cf-field">Creature type<input name="type" type="text" maxlength="180" value="${m.type==="Unknown"?"":e(m.type)}" placeholder="e.g. Humanoid"></label>${select("size","Size",["Tiny","Small","Medium","Large","Huge","Gargantuan"],m.size==="Unknown"?"":m.size,"Unknown / use source")}</div>
+      <label class="cf-check"><input type="checkbox" name="hidden" ${record.hidden?"checked":""}><span>Hide this copy from the bestiary and generator</span></label><div class="cf-callout">These corrections are saved in Combat Forge's world settings. They apply to browsing, filtering, balancing, and loading encounters. The source compendium, its artwork, and its stat blocks remain intact. Blank optional fields use the source data.</div>
+      ${Object.keys(record.correction).length?button("reset-correction","Reset to source metadata","arrows-rotate",`data-uuid="${e(uuid)}" class="cf-reset-correction"`):""}`;
+    this.showDialog(`Amend ${m.name}`,body,async data=> {
+      await saveCorrection(uuid,{cr:data.get("cr"),book:data.get("book"),edition:data.get("edition"),environments:data.get("environments"),type:data.get("type"),size:data.get("size"),hidden:data.has("hidden")});
+      this.closeDialog();await this.refreshAfterRepair();
+    },{submit:"Save corrections",wide:true});
+  }
+
+  replaceReferenceDialog(uuid) {
+    const reference=this.catalog.references.find(r=>r.uuid===uuid);
+    if(!reference)throw new Error("That reference is no longer in the scan. Scan the Ledger again.");
+    const pool=this.catalog.monsters.filter(m=>m.uuid!==uuid);
+    const body=`<span class="cf-eyebrow">MEND A BROKEN REFERENCE</span><p>Choose the actor Combat Forge should use for <strong>${e(reference.name)}</strong> wherever this old reference appears. This is a world-wide module mapping; source packs and saved journals are not rewritten.</p><code class="cf-reference-uuid">${e(uuid)}</code><label class="cf-field">Find a replacement<input type="search" name="replacementSearch" placeholder="Search creature name, book, or source…" autocomplete="off"></label><label class="cf-field">Available NPCs<select name="replacement" size="7" required class="cf-replacement-options"></select><small class="cf-replacement-count"></small></label><div class="cf-callout">Replacement is explicit: similar names may represent different stat blocks or editions. Loading an encounter recalculates its difficulty using the chosen actor and your metadata corrections.</div>`;
+    const dialog=this.showDialog("Choose replacement actor",body,async data=> {
+      const selected=data.get("replacement");
+      if(!pool.some(m=>m.uuid===selected))throw new Error("Choose an available creature from the list.");
+      await saveReplacement(uuid,selected);this.closeDialog();await this.refreshAfterRepair();
+    },{submit:"Use replacement",wide:true});
+    const update=()=> {
+      const search=dialog.querySelector('[name="replacementSearch"]').value.trim().toLowerCase();
+      const matches=pool.filter(m=>`${m.name} ${m.book} ${m.packLabel}`.toLowerCase().includes(search));
+      const options=dialog.querySelector('[name="replacement"]');
+      const previous=options.value;
+      options.innerHTML=matches.slice(0,100).map(m=>`<option value="${e(m.uuid)}">${e(m.name)} · CR ${formatCR(m.cr)} · ${e(m.edition)} · ${e(m.packLabel)}</option>`).join("");
+      if(matches.some(m=>m.uuid===previous))options.value=previous;else options.selectedIndex=-1;
+      dialog.querySelector(".cf-replacement-count").textContent=`Showing ${Math.min(matches.length,100)} of ${matches.length} matches. Search to narrow the list.`;
+    };
+    dialog.querySelector('[name="replacementSearch"]').addEventListener("input",update);update();
   }
 
   generateDialog() {
@@ -288,9 +371,9 @@ export class ForgeController {
     const data=validateEncounter(entry.data);
     const lines=[];
     for(const line of data.lines) {
-      let monster=this.catalog.monsters.find(m=>m.uuid===line.monster.uuid),missing=false;
+      let monster=this.catalog.get(line.monster.uuid),missing=false;
       if(!monster) {
-        try {const actor=await foundry.utils.fromUuid(line.monster.uuid);monster=normalizeMonster(actor,actor?.pack?game.packs.get(actor.pack):null);}catch{}
+        try {const resolved=resolveReplacement(line.monster.uuid);const actor=await foundry.utils.fromUuid(resolved);monster=normalizeMonster(actor,actorPack(actor),repairState().actors[resolved]);}catch{}
         missing=!monster;
       }
       lines.push({...line,monster:monster||line.monster,missing});
@@ -346,7 +429,7 @@ export class ForgeController {
   }
 
   helpDialog() {
-    this.showDialog("Welcome to Combat Forge",`<span class="cf-eyebrow">BUILD A FIGHT. TELL A STORY.</span><ol class="cf-help-steps"><li><b>Choose your party.</b> Use the person button or drop character Actors onto the party panel.</li><li><b>Connect your bestiary.</b> The books button configures sources. All Actor packs are discovered automatically by default.</li><li><b>Forge an encounter.</b> Click creatures, adjust quantities, or use Generate. Open the eye button to inspect a stat block.</li><li><b>Watch the difficulty.</b> Full shows the rested party; Now estimates their current state. Click the rating for the math.</li><li><b>Keep it in the Vault.</b> Save a named encounter, then load, edit, inspect, or deploy it any time.</li><li><b>Deploy to the scene.</b> Choose your placement and whether to hide tokens or add them to combat.</li></ol><h3>Homebrew & metadata</h3><p>Drop a world or compendium NPC onto the monster list to keep a reference. It needs a valid CR. The source Actor's creature type, size, source book/rules, alignment, habitat, and legendary resources power the filters. Missing fields stay unknown.</p><p>Press <kbd>/</kbd> in this window to search. Focus a creature row and press Enter or Space to add it.</p><small>Combat Forge 1.0.0 · Foundry VTT 14 · D&D5e · No monster content is bundled.</small>`);
+    this.showDialog("Welcome to Combat Forge",`<span class="cf-eyebrow">BUILD A FIGHT. TELL A STORY.</span><ol class="cf-help-steps"><li><b>Choose your party.</b> Use the person button or drop character Actors onto the party panel.</li><li><b>Connect your bestiary.</b> The books button configures sources. All Actor packs are discovered automatically by default.</li><li><b>Forge an encounter.</b> Click creatures, adjust quantities, or use Generate. Open the eye button to inspect a stat block.</li><li><b>Watch the difficulty.</b> Full shows the rested party; Now estimates their current state. Click the rating for the math.</li><li><b>Keep it in the Vault.</b> Save a named encounter, then load, edit, inspect, or deploy it any time.</li><li><b>Deploy to the scene.</b> Choose your placement and whether to hide tokens or add them to combat.</li></ol><h3>Homebrew & metadata</h3><p>Drop a world or compendium NPC onto the monster list to keep a reference. Missing CR opens the Ledger repair form. The source Actor's creature type, size, source book/rules, alignment, habitat, and legendary resources power the filters. Use The Ledger to repair missing CR, book, edition, or environments; review duplicate copies; and replace broken saved references. Corrections stay in module world settings.</p><p>Press <kbd>/</kbd> in this window to search. Focus a creature row and press Enter or Space to add it.</p><small>Combat Forge 1.1.0 · Foundry VTT 14 · D&D5e · No monster content is bundled.</small>`);
   }
 }
 

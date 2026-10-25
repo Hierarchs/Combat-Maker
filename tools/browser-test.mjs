@@ -2,6 +2,7 @@ import { chromium } from "playwright";
 import { startPreview } from "./preview.mjs";
 import { mkdir } from "node:fs/promises";
 import assert from "node:assert/strict";
+import { checkHealthUI } from "./health-browser-check.mjs";
 
 const server=await startPreview(0);const port=server.address().port;
 let browser;
@@ -9,6 +10,7 @@ try {
   browser=await chromium.launch({channel:process.env.CF_BROWSER_CHANNEL||"chrome",headless:true});
   const page=await browser.newPage({viewport:{width:1440,height:940},deviceScaleFactor:1});
   const errors=[];page.on("pageerror",error=>errors.push(error.message));
+  await mkdir("test-results",{recursive:true});
   await page.goto(`http://127.0.0.1:${port}`);
   await page.waitForSelector(".cf-monster-table tbody tr");
   assert.equal(await page.locator(".cf-monster-table tbody tr").count(),26);
@@ -83,6 +85,7 @@ try {
   await page.getByRole("button",{name:"Save & re-index",exact:true}).click();
   await page.waitForFunction(()=>!document.querySelector(".cf-dialog").open);
   // Put the verified preview into a clean representative encounter for visual QA.
+  await checkHealthUI(page);
   await page.evaluate(async()=> {
     const c=preview.app.controller;
     await game.settings.set("combat-maker","homebrew",[]);await c.refreshCatalog();
@@ -111,5 +114,5 @@ try {
   await action("generate").click();await page.screenshot({path:"test-results/generator.png"});await page.keyboard.press("Escape");
   await action("tab-vault").click();await page.screenshot({path:"test-results/vault.png"});
   assert.deepEqual(errors,[]);
-  process.stdout.write("Browser checks passed: filtering, party, rules, generation, save/load/edit, deployment, source configuration, homebrew drop, escaping, and compact layout.\n");
+  process.stdout.write("Browser checks passed: Forge/Vault workflows, Ledger diagnostics, metadata repairs, persistence and reset, duplicate preference/restore, missing-reference mapping with load and deployment, escaping, and compact layouts.\n");
 }finally {await browser?.close();await new Promise(resolve=>server.close(resolve));}
