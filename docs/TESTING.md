@@ -1,0 +1,22 @@
+# Validation and live smoke test
+
+The module is implemented against the public Foundry V14 API and current/legacy D&D5e data fields. Automated tests run independently of the proprietary Foundry runtime. Passing them does not certify compatibility with every system release or third-party compendium.
+
+## Automated verification
+
+Run `npm run check`, `npm test`, `npm run test:browser`, and `npm run build`. Browser tests use mock world documents and installed Chrome; no real world data is read or changed. Screenshots are saved to `test-results/` for visual review. The ZIP is built with production files only.
+
+## In a disposable Foundry V14 D&D5e world
+
+1. Install the packaged module, enable it, reload, and inspect the browser console for errors.
+2. Open the hammer from Token Controls and the Actors directory. Verify GM-only access and Ctrl+Shift+E. Close/reopen and confirm draft restoration.
+3. Add mixed-level characters, including a full caster, a half caster, a warlock, and a martial. Change HP, spell slots, limited-use features, exhaustion, and incapacitation while the builder is open. Check the explanation panel and toggle dynamic estimates off.
+4. Index a system Actor pack, a module Actor pack, and a custom world Actor pack. Exercise both automatic discovery and explicit pack selection. Ensure failed or unavailable sources produce a useful message.
+5. Filter every exposed field; test fractional CRs and unknown metadata. Drop a valid homebrew NPC, a character, and an invalid-CR NPC. Confirm source packs are not changed.
+6. Generate by each 2014 and 2024 difficulty, and by combined CR. Restrict type/environment/book/edition/size and monster/species limits. Test empty filter results and unreachable targets.
+7. Save, inspect, load, edit, update, copy, and delete Vault entries. Reload the world and confirm persistence. Verify saved cards show the saved rating while loaded encounters use live party data.
+8. Deploy hidden and visible tokens near the view center and a clicked point, with and without combat. Test Small, Large, Huge, and wildcard tokens on square, hex, and gridless scenes. Check token footprints, prototype appearance, unlinked health, combat membership, and reused imports.
+9. Test Escape cancellation of point selection, missing source actors, a full scene, and scene switching during deployment. Confirm errors do not leave partial deployments; inspect rollback notifications if a server operation is rejected.
+10. Resize to a compact window around 1060×610 and verify party/monster scrolling, filters, generator, Vault details, and deployment controls remain usable. Test a different Foundry theme and normal module combinations.
+
+Review dynamic/swarm estimates with your table; these modes intentionally use documented house formulas rather than claiming to be official balance rules.
